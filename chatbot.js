@@ -13,8 +13,7 @@ const client = new net.Socket();
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
   console.log('Connected to the MUD server');
-  // Send initial commands if necessary
-  // client.write('your_initial_command\n');
+  client.write(`connect ${process.env.BOT_NAME} ${process.env.BOT_PASSWORD}\n`);
 });
 
 // Handle incoming data
