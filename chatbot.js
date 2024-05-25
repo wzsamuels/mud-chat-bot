@@ -21,33 +21,33 @@ client.on('data', async (data) => {
   console.log('Received: ' + data);
   const message = data.toString().trim();
 
+  // Regex pattern to match the channel message format [channelname] User says (to ChatBot), "message"
+  const patternChannel = new RegExp(`\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
   // Regex pattern to match the format [user] [says / exclaims / asks] ([to / at / of ] ChatBot), "message"
   const patternDirect = new RegExp(`(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
-  // Regex pattern to match the channel message format #channelname User says, "message"
-  const patternChannel = new RegExp(`#(\\w+)\\s+(\\w+)\\s+says,\\s+"([^"]+)"`, 'i');
 
-  let match = message.match(patternDirect);
+  let match = message.match(patternChannel);
 
   if (match) {
-    const userMessage = match[4]; // Extract the user message from the regex capture group
+    const channelName = match[1]; // Extract the channel name
+    const userName = match[2]; // Extract the user name
+    const userMessage = match[5]; // Extract the user message from the regex capture group
     const response = await generateAIResponse(userMessage);
     if (response) {
-      client.write(response + '\n');
+      client.write(`#${channelName} ..${userName} ${response}\n`);
     }
   } else {
-    match = message.match(patternChannel);
+    match = message.match(patternDirect);
     if (match) {
-      const channelName = match[1]; // Extract the channel name
-      const userMessage = match[3]; // Extract the user message from the regex capture group
+      const userName = match[1]; // Extract the user name
+      const userMessage = match[4]; // Extract the user message from the regex capture group
       const response = await generateAIResponse(userMessage);
       if (response) {
-        console.log(`Response: ${response}`)
-        client.write(`#${channelName} ${response}\n`);
+        client.write(`..${userName} ${response}\n`);
       }
     }
   }
 });
-
 
 // Handle connection close
 client.on('close', () => {
