@@ -21,18 +21,33 @@ client.on('data', async (data) => {
   console.log('Received: ' + data);
   const message = data.toString().trim();
 
-  // Regex pattern to match the format [user] [says / exclaims / asks] ([to / at / of ] ChatBot)
-  const pattern = new RegExp(`\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
-  const match = message.match(pattern);
+  // Regex pattern to match the format [user] [says / exclaims / asks] ([to / at / of ] ChatBot), "message"
+  const patternDirect = new RegExp(`(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
+  // Regex pattern to match the channel message format #channelname User says, "message"
+  const patternChannel = new RegExp(`#(\\w+)\\s+(\\w+)\\s+says,\\s+"([^"]+)"`, 'i');
+
+  let match = message.match(patternDirect);
 
   if (match) {
-    const userMessage = message.split(')').slice(1).join(')').trim(); // Extract the message content
+    const userMessage = match[4]; // Extract the user message from the regex capture group
     const response = await generateAIResponse(userMessage);
     if (response) {
-      client.write('#chatbot ' + response + '\n');
+      client.write(response + '\n');
+    }
+  } else {
+    match = message.match(patternChannel);
+    if (match) {
+      const channelName = match[1]; // Extract the channel name
+      const userMessage = match[3]; // Extract the user message from the regex capture group
+      const response = await generateAIResponse(userMessage);
+      if (response) {
+        console.log(`Response: ${response}`)
+        client.write(`#${channelName} ${response}\n`);
+      }
     }
   }
 });
+
 
 // Handle connection close
 client.on('close', () => {
