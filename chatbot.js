@@ -11,7 +11,12 @@ const openai = new OpenAI({
 const client = new net.Socket();
 
 // Command variables
-let currentMood = '';
+let currentMood = '';        // from your existing code
+let isRecapInProgress = false;
+let recapChannel = '';
+let recapRequester = '';     // the username of who asked for the recap
+let recapBuffer = [];        // to store lines of the MUD’s recap
+let recapReplyChannel = null; // store the channel context if needed
 
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
@@ -21,28 +26,67 @@ client.connect(process.env.PORT, process.env.HOST, () => {
 
 // Handle incoming data
 client.on('data', async (data) => {
-  console.log('Received: ' + data);
   const message = data.toString().trim();
+  console.log('Received:', message);
 
-  // Regex pattern to match the channel message format:
-  const patternChannel = new RegExp(`\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
-  // Regex pattern to match the direct message format:
-  const patternDirect = new RegExp(`(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
+  // 1) If we are in recap mode, collect lines
+  //    *unless* we detect an "end-of-recap" signal.
+  if (isRecapInProgress) {
+    // You might need to adapt how you detect the end of recap.
+    // For example, maybe the MUD sends "End of recap" or "Recap complete."
+    if (message.startsWith('Recapped ')) {
+      // That means we have the full recap now
+
+      isRecapInProgress = false;
+
+      // recapBuffer should have all lines of the recap
+      const recapText = recapBuffer.join('\n');
+      recapBuffer = []; // clear it out for next time
+
+      // Let’s pass this recap to OpenAI for the summary or opinion
+      const opinion = await generateRecapOpinion(recapText);
+
+      // Now send the result back to the user who requested it
+      // If it was a channel request, we respond there;
+      // if direct, respond in private.
+      sendReply(recapRequester, opinion, recapReplyChannel);
+
+      // Reset these
+      recapChannel = '';
+      recapRequester = '';
+      recapReplyChannel = null;
+
+      return;
+    } else {
+      // We’re still in the recap, so store this line
+      recapBuffer.push(message);
+      return;
+    }
+  }
+
+  // 2) If not in recap mode, do your usual detection:
+  // (the channel message pattern, the direct message pattern, etc.)
+  const patternChannel = new RegExp(
+    `\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`,
+    'i'
+  );
+  const patternDirect = new RegExp(
+    `(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`,
+    'i'
+  );
 
   let match = message.match(patternChannel);
-
   if (match) {
     const channelName = match[1];
     const userName = match[2];
     const userMessage = match[5];
 
-    // 1) Check if userMessage is a command (i.e. starts with '@')
+    // Is it a command?
     if (userMessage.startsWith('@')) {
-      handleCommand(userMessage, userName, channelName); // We'll define this function below
-      return;  // No need to go to OpenAI
+      handleCommand(userMessage, userName, channelName);
+      return;
     }
 
-    // 2) Normal (non-command) case:
     const response = await generateAIResponse(userMessage);
     if (response) {
       client.write(`#${channelName} ..${userName} ${response}\n`);
@@ -53,13 +97,11 @@ client.on('data', async (data) => {
       const userName = match[1];
       const userMessage = match[4];
 
-      // 1) Check if userMessage is a command
       if (userMessage.startsWith('@')) {
         handleCommand(userMessage, userName);
         return;
       }
 
-      // 2) Normal (non-command) case:
       const response = await generateAIResponse(userMessage);
       if (response) {
         client.write(`..${userName} ${response}\n`);
@@ -125,27 +167,43 @@ async function generateAIResponse(message) {
 rl.prompt();
 
 function handleCommand(userMessage, userName, channelName = null) {
-  // This regex captures:
-  // 1) a literal '@'
-  // 2) one or more word characters (\w+)
-  // 3) one or more spaces (\s+)
-  // 4) everything else in the line (.*)
   const commandRegex = /^@(\w+)\s+(.*)/;
   const match = userMessage.match(commandRegex);
 
   if (!match) {
-    // Could not parse a valid command
-    sendReply(userName, "I couldn't parse that command. Example usage: @setmood whimsical genius", channelName);
+    sendReply(userName, "I couldn't parse that command.", channelName);
     return;
   }
 
-  const cmd = match[1];  // e.g. "setmood"
-  const args = match[2]; // e.g. "whimsical genius"
+  const cmd = match[1].toLowerCase();  // e.g. 'recap'
+  const args = match[2].trim();        // e.g. '#channelname'
 
-  switch (cmd.toLowerCase()) {
+  switch (cmd) {
     case 'setmood':
-      currentMood = args.trim();  // Save the entire multi-word string
+      currentMood = args;
       sendReply(userName, `Mood set to: '${currentMood}'`, channelName);
+      break;
+
+    case 'recap':
+      // 1) parse the channel name, e.g. "#channelname"
+      recapChannel = args;
+      recapRequester = userName;
+      recapReplyChannel = channelName;
+
+      // 2) clear out the recap buffer
+      recapBuffer = [];
+      isRecapInProgress = true;
+
+      // 3) tell the MUD to send the recap lines for that channel
+      //    Adjust this line to whatever your MUD's syntax is
+      client.write(`@recap ${recapChannel}\n`);
+
+      // 4) Let the user know we’re fetching the recap
+      sendReply(
+        userName, 
+        `Fetching recap for ${recapChannel}... Please wait.`, 
+        channelName
+      );
       break;
 
     default:
@@ -160,5 +218,35 @@ function sendReply(userName, text, channelName) {
   } else {
     // Direct user
     client.write(`..${userName} ${text}\n`);
+  }
+}
+async function generateRecapOpinion(recapText) {
+  try {
+    let systemPrompt = 
+      'You are a witty, creative, and clever user on a social online MUD. ' +
+      'You will receive a channel recap from another user. ' +
+      'Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
+
+    if (currentMood) {
+      systemPrompt += `\nCurrent mood: ${currentMood}`;
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Here is the channel recap:\n\n${recapText}\n\nPlease summarize or give an opinion.`,
+        },
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+    });
+
+    return completion.choices[0].message.content.trim();
+  } catch (error) {
+    console.error('Error generating recap opinion:', error);
+    return '(Unable to generate recap opinion at this time.)';
   }
 }
