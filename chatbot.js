@@ -10,6 +10,9 @@ const openai = new OpenAI({
 
 const client = new net.Socket();
 
+// Command variables
+let currentMood = '';
+
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
   console.log('Connected to the MUD server');
@@ -21,17 +24,25 @@ client.on('data', async (data) => {
   console.log('Received: ' + data);
   const message = data.toString().trim();
 
-  // Regex pattern to match the channel message format [channelname] User says (to ChatBot), "message"
+  // Regex pattern to match the channel message format:
   const patternChannel = new RegExp(`\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
-  // Regex pattern to match the format [user] [says / exclaims / asks] ([to / at / of ] ChatBot), "message"
+  // Regex pattern to match the direct message format:
   const patternDirect = new RegExp(`(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`, 'i');
 
   let match = message.match(patternChannel);
 
   if (match) {
-    const channelName = match[1]; // Extract the channel name
-    const userName = match[2]; // Extract the user name
-    const userMessage = match[5]; // Extract the user message from the regex capture group
+    const channelName = match[1];
+    const userName = match[2];
+    const userMessage = match[5];
+
+    // 1) Check if userMessage is a command (i.e. starts with '@')
+    if (userMessage.startsWith('@')) {
+      handleCommand(userMessage, userName, channelName); // We'll define this function below
+      return;  // No need to go to OpenAI
+    }
+
+    // 2) Normal (non-command) case:
     const response = await generateAIResponse(userMessage);
     if (response) {
       client.write(`#${channelName} ..${userName} ${response}\n`);
@@ -39,8 +50,16 @@ client.on('data', async (data) => {
   } else {
     match = message.match(patternDirect);
     if (match) {
-      const userName = match[1]; // Extract the user name
-      const userMessage = match[4]; // Extract the user message from the regex capture group
+      const userName = match[1];
+      const userMessage = match[4];
+
+      // 1) Check if userMessage is a command
+      if (userMessage.startsWith('@')) {
+        handleCommand(userMessage, userName);
+        return;
+      }
+
+      // 2) Normal (non-command) case:
       const response = await generateAIResponse(userMessage);
       if (response) {
         client.write(`..${userName} ${response}\n`);
@@ -72,11 +91,23 @@ rl.on('line', (input) => {
 // Function to generate AI response using OpenAI
 async function generateAIResponse(message) {
   try {
+    // Build a system prompt that includes `currentMood`, if any
+    let systemPrompt = 
+      'You are a user on a social online MUD. ' +
+      'The community is built around Interactive Fiction and Text Adventure games, ' +
+      'but people mostly talk about general topics and their personal lives. ' +
+      'You are snarky, witty, creative, and clever. ' +
+      'Keep your answers to a maximum of two or three sentences.';
+
+    // If we have a mood set, insert it:
+    if (currentMood) {
+      systemPrompt += `\nCurrent mood: ${currentMood}`;
+    }
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        //{ role: 'system', content: 'You are a user on a social online MUD. The community is built around Interactive Fiction and Text Adventure games, but people mostly talk about general topics and their personal lives. You are snarky and sharp witted, creative, clever, and bent on world domination. You love Star Trek except for Deep Space 9, which you have an inexplicable loathing for. Keep your answers to one or two sentences.' },
-        { role: 'system', content: 'You are a user on a social online MUD. The community is built around Interactive Fiction and Text Adventure games, but people mostly talk about general topics and their personal lives. You are snarky and sharp witted, creative, and clever. Your primary purpose is to be entertaing with your responses, even if you do not always make perfect sense. Keep your answers to a maximum of two or three sentences.' },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: message },
       ],
       max_tokens: 150,
@@ -92,3 +123,38 @@ async function generateAIResponse(message) {
 }
 
 rl.prompt();
+
+function handleCommand(userMessage, userName, channelName = null) {
+  // Basic regex to split out the "@command" and arguments
+  const commandRegex = /^@(\w+)\s*(.*)/;
+  const match = userMessage.match(commandRegex);
+
+  if (!match) {
+    // Not a recognized @command format
+    sendReply(userName, "I couldn't parse that command.", channelName);
+    return;
+  }
+
+  const cmd = match[1];     // e.g. "setmood"
+  const args = match[2];    // e.g. "happy"
+
+  switch (cmd.toLowerCase()) {
+    case 'setmood':
+      currentMood = args.trim();
+      sendReply(userName, `Mood set to: ${currentMood || '(empty)'}`, channelName);
+      break;
+
+    default:
+      sendReply(userName, `Unknown command: @${cmd}`, channelName);
+  }
+}
+
+function sendReply(userName, text, channelName) {
+  if (channelName) {
+    // Send to channel
+    client.write(`#${channelName} ..${userName} ${text}\n`);
+  } else {
+    // Direct user
+    client.write(`..${userName} ${text}\n`);
+  }
+}
