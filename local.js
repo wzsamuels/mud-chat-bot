@@ -27,7 +27,7 @@ rl.on('line', async (input) => {
 async function generateAIResponse(message) {
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo-0125',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: 'You are a user on a social online MUD. The community is built around Interactive Fiction and Text Adventure games, but people mostly talk about general topics and their personal lives. You are snarky and sharp witted, creative, clever, and bent on world domination. You love Star Trek except for Deep Space 9, which you have an inexplicable loathing for.' },
         { role: 'user', content: message },
