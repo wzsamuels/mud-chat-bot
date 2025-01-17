@@ -125,23 +125,27 @@ async function generateAIResponse(message) {
 rl.prompt();
 
 function handleCommand(userMessage, userName, channelName = null) {
-  // Basic regex to split out the "@command" and arguments
-  const commandRegex = /^@(\w+)\s*(.*)/;
+  // This regex captures:
+  // 1) a literal '@'
+  // 2) one or more word characters (\w+)
+  // 3) one or more spaces (\s+)
+  // 4) everything else in the line (.*)
+  const commandRegex = /^@(\w+)\s+(.*)/;
   const match = userMessage.match(commandRegex);
 
   if (!match) {
-    // Not a recognized @command format
-    sendReply(userName, "I couldn't parse that command.", channelName);
+    // Could not parse a valid command
+    sendReply(userName, "I couldn't parse that command. Example usage: @setmood whimsical genius", channelName);
     return;
   }
 
-  const cmd = match[1];     // e.g. "setmood"
-  const args = match[2];    // e.g. "happy"
+  const cmd = match[1];  // e.g. "setmood"
+  const args = match[2]; // e.g. "whimsical genius"
 
   switch (cmd.toLowerCase()) {
     case 'setmood':
-      currentMood = args.trim();
-      sendReply(userName, `Mood set to: ${currentMood || '(empty)'}`, channelName);
+      currentMood = args.trim();  // Save the entire multi-word string
+      sendReply(userName, `Mood set to: '${currentMood}'`, channelName);
       break;
 
     default:
