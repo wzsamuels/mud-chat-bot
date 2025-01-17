@@ -26,44 +26,50 @@ client.connect(process.env.PORT, process.env.HOST, () => {
 
 // Handle incoming data
 client.on('data', async (data) => {
-  // Debug logging: show raw bytes and the trimmed string
-  console.log('Raw data (hex):', data.toString('hex'));
+  
   const message = data.toString().trim();
-  console.log('Received (trimmed):', JSON.stringify(message));
+  console.log('Received:', message);
 
   // 1) If we are in recap mode, collect lines
   //    *unless* we detect an "end-of-recap" signal.
   if (isRecapInProgress) {
-    // You might need to adapt how you detect the end of recap.
-    // For example, maybe the MUD sends "End of recap" or "Recap complete."
-    if (message.startsWith('Recapped ')) {
-      // That means we have the full recap now
-
-      isRecapInProgress = false;
-
-      // recapBuffer should have all lines of the recap
-      const recapText = recapBuffer.join('\n');
-      recapBuffer = []; // clear it out for next time
-
-      // Let’s pass this recap to OpenAI for the summary or opinion
-      const opinion = await generateRecapOpinion(recapText);
-
-      // Now send the result back to the user who requested it
-      // If it was a channel request, we respond there;
-      // if direct, respond in private.
-      sendReply(recapRequester, opinion, recapReplyChannel);
-
-      // Reset these
-      recapChannel = '';
-      recapRequester = '';
-      recapReplyChannel = null;
-
-      return;
-    } else {
-      // We’re still in the recap, so store this line
-      recapBuffer.push(message);
-      return;
+    // Split the received chunk on newlines
+    const lines = message.split(/\r?\n/);
+  
+    for (const line of lines) {
+      // If this line starts with "Recapped "
+      // (or matches a regex if you want a more flexible check)
+      if (line.startsWith('Recapped ')) {
+        // End of recap
+        isRecapInProgress = false;
+  
+        // Join everything we’ve buffered so far, plus any lines we got before this one
+        const recapText = recapBuffer.join('\n');
+        recapBuffer = []; // clear for next time
+  
+        // Generate opinion
+        const opinion = await generateRecapOpinion(recapText);
+        sendReply(recapRequester, opinion, recapReplyChannel);
+  
+        // Reset state
+        recapChannel = '';
+        recapRequester = '';
+        recapReplyChannel = null;
+  
+        // Because we found the end-of-recap line, we don’t add it to the buffer
+        // or process further lines in this chunk. 
+        // You can `break;` if you like, 
+        // but be aware there *could* be more lines after "Recapped...".
+        // For safety, you might want to `continue;` or `break;`
+        break;
+      } else {
+        // We’re still in the recap lines
+        recapBuffer.push(line);
+      }
     }
+  
+    // Important: Return to avoid your normal message handling below
+    return;
   }
 
   // 2) If not in recap mode, do your usual detection:
