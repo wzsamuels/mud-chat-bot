@@ -26,8 +26,10 @@ client.connect(process.env.PORT, process.env.HOST, () => {
 
 // Handle incoming data
 client.on('data', async (data) => {
+  // Debug logging: show raw bytes and the trimmed string
+  console.log('Raw data (hex):', data.toString('hex'));
   const message = data.toString().trim();
-  console.log('Received:', message);
+  console.log('Received (trimmed):', JSON.stringify(message));
 
   // 1) If we are in recap mode, collect lines
   //    *unless* we detect an "end-of-recap" signal.
