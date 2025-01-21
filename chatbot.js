@@ -68,7 +68,7 @@ client.on('data', async (data) => {
 
         sendReply(
           recapRequester,
-          "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd life!",
+          "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd like!",
           recapReplyChannel
         );
 
