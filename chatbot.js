@@ -83,6 +83,13 @@ client.on('data', async (data) => {
     'i'
   );
 
+    // 4) **New** regex for whispers (i.e. "Player whispers, 'blah'")
+  //    You can capture "You" as well if needed:
+  const patternWhisper = new RegExp(
+    `(\\w+|You)\\s+whispers,\\s+"([^"]+)"`,
+    'i'
+  );
+
   let match = message.match(patternChannel);
   if (match) {
     const channelName = match[1];
@@ -98,6 +105,8 @@ client.on('data', async (data) => {
     const response = await generateAIResponse(userMessage);
     if (response) {
       client.write(`#${channelName} ..${userName} ${response}\n`);
+    } else {
+      client.write(`#${channelName} ..${userName} Oops, something went wrong with my AI`)
     }
   } else {
     match = message.match(patternDirect);
@@ -113,6 +122,26 @@ client.on('data', async (data) => {
       const response = await generateAIResponse(userMessage);
       if (response) {
         client.write(`..${userName} ${response}\n`);
+      } else {
+        client.write(`..${userName} Oops, something went wrong with my AI`)
+      }
+    } else {
+      match = message.match(patternWhisper);
+      if (match) {
+        const userName = match[1];
+        const userMessage = match[2];
+
+        if (userMessage.startsWith('@')) {
+          handleCommand(userMessage, userName);
+          return;
+        }
+
+        const response = await generateAIResponse(userMessage);
+        if (response) {
+          client.write(`.${userName} ${response}\n`)
+        } else {
+          client.write(`.${userName} Oops, something went wrong with my AI`)
+        }
       }
     }
   }
