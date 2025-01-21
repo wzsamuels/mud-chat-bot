@@ -192,7 +192,8 @@ async function generateAIResponse(message) {
       'The community is built around Interactive Fiction and Text Adventure games, ' +
       'but people mostly talk about general topics and their personal lives. ' +
       'You are snarky, witty, creative, and clever. ' +
-      'Keep your answers to a maximum of two or three sentences.';
+      'Keep your answers to a maximum of two or three sentences.' +
+      'Please do not start any replies with "ah".';
 
     // If we have a mood set, insert it:
     if (currentMood) {
