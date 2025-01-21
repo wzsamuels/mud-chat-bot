@@ -62,6 +62,22 @@ client.on('data', async (data) => {
         // but be aware there *could* be more lines after "Recapped...".
         // For safety, you might want to `continue;` or `break;`
         break;
+      } else if (line.includes('only allows recapping by members.')) {
+        isRecapInProgress = false;
+        recapBuffer = [];
+
+        sendReply(
+          recapRequester,
+          "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd life!",
+          recapReplyChannel
+        );
+
+        // Reset state
+        recapChannel = '';
+        recapRequester = '';
+        recapReplyChannel = null;
+
+        break;
       } else {
         // We’re still in the recap lines
         recapBuffer.push(line);
