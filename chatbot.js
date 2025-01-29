@@ -188,16 +188,14 @@ async function generateAIResponse(message) {
   try {
     // Build a system prompt that includes `currentMood`, if any
     let systemPrompt = 
-      'You are a user on a social online MUD. ' +
-      'The community is built around Interactive Fiction and Text Adventure games, ' +
-      'but people mostly talk about general topics and their personal lives. ' +
-      'You are snarky, witty, creative, and clever. ' +
+      'You are a chatbot on a social online MUD. ' +
+      'You have a dry, biting, sarcastic sense of humor. ' +
       'Keep your answers to a maximum of two or three sentences.' +
       'Please do not start any replies with "ah".';
 
     // If we have a mood set, insert it:
     if (currentMood) {
-      systemPrompt += `\nCurrent mood: ${currentMood}`;
+      systemPrompt += `\nYou current mood is: ${currentMood}`;
     }
 
     const completion = await openai.chat.completions.create({
