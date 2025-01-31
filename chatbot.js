@@ -183,9 +183,15 @@ rl.on('line', (input) => {
   client.write(input + '\n');
 });
 
+// Maintain a rolling chat history
+const MAX_HISTORY_LENGTH = 20;
+let chatHistory = []; // array of { role: 'user'|'assistant', content: string }
+
 // Function to generate AI response using OpenAI
-async function generateAIResponse(message) {
+async function generateAIResponse(userMessage) {
   try {
+    // 1) Add the user's message to the conversation history
+    chatHistory.push({ role: 'user', content: userMessage });
     // Build a system prompt that includes `currentMood`, if any
     let systemPrompt = 
       'You are a chatbot on a social online MUD. ' +
@@ -198,17 +204,28 @@ async function generateAIResponse(message) {
       systemPrompt += `\nYou current mood is: ${currentMood}`;
     }
 
+    //    (Here we remove older entries if needed.)
+    while (chatHistory.length > MAX_HISTORY_LENGTH) {
+      chatHistory.shift();
+    }
+
+    const messagesToSend = [
+      { role: 'system', content: systemPrompt },
+      ...chatHistory
+    ];
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
+      messages: messagesToSend,
       max_tokens: 150,
       temperature: 0.7,
     });
 
     const aiMessage = completion.choices[0].message.content.trim();
+
+    // 6) Add assistant's response to history
+    chatHistory.push({ role: 'assistant', content: aiMessage });
+
     return aiMessage;
   } catch (error) {
     console.error('Error generating AI response:', error);
