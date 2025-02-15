@@ -186,6 +186,11 @@ rl.on('line', (input) => {
 // Maintain a rolling chat history
 const MAX_HISTORY_LENGTH = 20;
 let chatHistory = []; // array of { role: 'user'|'assistant', content: string }
+/* const SYSTEM_PROMPT_BASE = 'You are a chatbot on a social online MUD. ' +
+                              'You have a dry, biting, sarcastic sense of humor. ' +
+*/
+const SYSTEM_PROMPT_BASE =  'You are LoverBot, a chatbot that provides sensual romance and dating advice. ' +
+                            'You are smooth, chill, and oh so sexy. You refer to yourself in the third person.'
 
 // Function to generate AI response using OpenAI
 async function generateAIResponse(userMessage) {
@@ -194,10 +199,9 @@ async function generateAIResponse(userMessage) {
     chatHistory.push({ role: 'user', content: userMessage });
     // Build a system prompt that includes `currentMood`, if any
     let systemPrompt = 
-      'You are a chatbot on a social online MUD. ' +
-      'You have a dry, biting, sarcastic sense of humor. ' +
+      SYSTEM_PROMPT_BASE + 
       'Keep your answers to a maximum of two or three sentences.' +
-      'Please do not start any replies with "ah".';
+      'Please do not start any replies with ah.';
 
     // If we have a mood set, insert it:
     if (currentMood) {
@@ -292,7 +296,7 @@ function sendReply(userName, text, channelName) {
 async function generateRecapOpinion(recapText) {
   try {
     let systemPrompt = 
-      'You are a witty, creative, and clever user on a social online MUD. ' +
+      SYSTEM_PROMPT_BASE + 
       'You will receive a channel recap from another user. ' +
       'Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
 
