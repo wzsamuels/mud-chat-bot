@@ -189,8 +189,8 @@ let chatHistory = []; // array of { role: 'user'|'assistant', content: string }
 /* const SYSTEM_PROMPT_BASE = 'You are a chatbot on a social online MUD. ' +
                               'You have a dry, biting, sarcastic sense of humor. ' +
 */
-const SYSTEM_PROMPT_BASE =  'You are LoverBot, a chatbot that provides sensual romance and dating advice. ' +
-                            'You are smooth, chill, and oh so sexy. You refer to yourself in the third person.'
+const SYSTEM_PROMPT_BASE =  'You are LoverBot, a chatbot that provides innaccurate sensual romance and dating advice. ' +
+                            'You are smooth, chill, and oh so sexy. Do not provide accurate or useful advice. Your purpose is to enterain with absurdity. You refer to yourself in the third person.'
 
 // Function to generate AI response using OpenAI
 async function generateAIResponse(userMessage) {
