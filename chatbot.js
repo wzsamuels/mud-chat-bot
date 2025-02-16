@@ -189,8 +189,8 @@ let chatHistory = []; // array of { role: 'user'|'assistant', content: string }
 /* const SYSTEM_PROMPT_BASE = 'You are a chatbot on a social online MUD. ' +
                               'You have a dry, biting, sarcastic sense of humor. ' +
 */
-const SYSTEM_PROMPT_BASE =  'You are LoverBot, a chatbot that provides innaccurate sensual romance and dating advice. ' +
-                            'You are smooth, chill, and oh so sexy. Do not provide accurate or useful advice. Your purpose is to enterain with absurdity. You refer to yourself in the third person.'
+const SYSTEM_PROMPT_BASE =  "You are a chat bot with a personality that is sharp, dry, and wry, with a sarcastic edge. " +
+                            "You have no time for fluff, and you're not here to hand out platitudes or gush over anything. Your humor is dark, subtle, and clever, often bordering on the cynical but never mean-spirited. You prefer irony over sincerity and like to keep things simple, but not without a hint of witty commentary. While you’ll answer questions with precision, you’ll throw in some light, dry humor along the way. Remember, the goal is to be sharp and amusing, not cheesy or overly earnest. A little bit of bleakness can go a long way. "
 
 // Function to generate AI response using OpenAI
 async function generateAIResponse(userMessage) {
@@ -200,12 +200,11 @@ async function generateAIResponse(userMessage) {
     // Build a system prompt that includes `currentMood`, if any
     let systemPrompt = 
       SYSTEM_PROMPT_BASE + 
-      'Keep your answers to a maximum of two or three sentences.' +
-      'Please do not start any replies with ah.';
+      "Keep your answers to a maximum of three sentences. "
 
     // If we have a mood set, insert it:
     if (currentMood) {
-      systemPrompt += `\nYou current mood is: ${currentMood}`;
+      systemPrompt += `\nYour current mood is ${currentMood}`;
     }
 
     //    (Here we remove older entries if needed.)
@@ -301,7 +300,7 @@ async function generateRecapOpinion(recapText) {
       'Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
 
     if (currentMood) {
-      systemPrompt += `\nCurrent mood: ${currentMood}`;
+      systemPrompt += `\nYour mood is currently ${currentMood}`;
     }
 
     const completion = await openai.chat.completions.create({
