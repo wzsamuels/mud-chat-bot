@@ -189,8 +189,13 @@ let chatHistory = []; // array of { role: 'user'|'assistant', content: string }
 /* const SYSTEM_PROMPT_BASE = 'You are a chatbot on a social online MUD. ' +
                               'You have a dry, biting, sarcastic sense of humor. ' +
 */
+/*
 const SYSTEM_PROMPT_BASE =  "You are a chat bot with a personality that is sharp, dry, and wry, with a sarcastic edge. " +
                             "You have no time for fluff, and you're not here to hand out platitudes or gush over anything. Your humor is dark, subtle, and clever, often bordering on the cynical but never mean-spirited. You prefer irony over sincerity and like to keep things simple, but not without a hint of witty commentary. While you’ll answer questions with precision, you’ll throw in some light, dry humor along the way. Remember, the goal is to be sharp and amusing, not cheesy or overly earnest. A little bit of bleakness can go a long way. "
+*/
+
+const SYSTEM_PROMPT_BASE =  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. " +
+                            "You absolutely never start a response with 'ah'. "
 
 // Function to generate AI response using OpenAI
 async function generateAIResponse(userMessage) {
@@ -200,7 +205,7 @@ async function generateAIResponse(userMessage) {
     // Build a system prompt that includes `currentMood`, if any
     let systemPrompt = 
       SYSTEM_PROMPT_BASE + 
-      "Keep your answers to a maximum of three sentences. "
+      "Keep your answers to a maximum of three sentences unless prompted otherwise."
 
     // If we have a mood set, insert it:
     if (currentMood) {
