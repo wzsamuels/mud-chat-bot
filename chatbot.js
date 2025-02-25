@@ -1,22 +1,30 @@
 require('dotenv').config();
 const net = require('net');
 const readline = require('readline');
-const { Configuration, OpenAIApi, OpenAI } = require('openai');
+const { OpenAI } = require('openai');
 
-// OpenAI API setup
+// Set up OpenAI API
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Create a socket client
 const client = new net.Socket();
 
-// Command variables
-let currentMood = '';        // from your existing code
+// Command and state variables
+let currentMood = '';
 let isRecapInProgress = false;
 let recapChannel = '';
-let recapRequester = '';     // the username of who asked for the recap
-let recapBuffer = [];        // to store lines of the MUD’s recap
-let recapReplyChannel = null; // store the channel context if needed
+let recapRequester = '';
+let recapBuffer = [];
+let recapReplyChannel = null;
+
+const MAX_HISTORY_LENGTH = 20;
+let chatHistory = [];
+
+// Base system prompt for AI responses
+const SYSTEM_PROMPT_BASE =
+  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You absolutely never start a response with 'ah'. ";
 
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
@@ -24,214 +32,154 @@ client.connect(process.env.PORT, process.env.HOST, () => {
   client.write(`connect ${process.env.BOT_NAME} ${process.env.BOT_PASSWORD}\n`);
 });
 
-// Handle incoming data
+// Handle incoming data from the server
 client.on('data', async (data) => {
-  
   const message = data.toString().trim();
   console.log('Received:', message);
 
-  // 1) If we are in recap mode, collect lines
-  //    *unless* we detect an "end-of-recap" signal.
+  // If in recap mode, process recap lines
   if (isRecapInProgress) {
-    // Split the received chunk on newlines
     const lines = message.split(/\r?\n/);
-  
     for (const line of lines) {
-      // If this line starts with "Recapped "
-      // (or matches a regex if you want a more flexible check)
       if (line.startsWith('Recapped ')) {
-        // End of recap
         isRecapInProgress = false;
-  
-        // Join everything we’ve buffered so far, plus any lines we got before this one
         const recapText = recapBuffer.join('\n');
-        recapBuffer = []; // clear for next time
-  
-        // Generate opinion
+        recapBuffer = [];
         const opinion = await generateRecapOpinion(recapText);
         sendReply(recapRequester, opinion, recapReplyChannel);
-  
-        // Reset state
+        // Reset recap state
         recapChannel = '';
         recapRequester = '';
         recapReplyChannel = null;
-  
-        // Because we found the end-of-recap line, we don’t add it to the buffer
-        // or process further lines in this chunk. 
-        // You can `break;` if you like, 
-        // but be aware there *could* be more lines after "Recapped...".
-        // For safety, you might want to `continue;` or `break;`
         break;
       } else if (line.includes('only allows recapping by members.')) {
         isRecapInProgress = false;
         recapBuffer = [];
-
         sendReply(
           recapRequester,
           "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd like!",
           recapReplyChannel
         );
-
-        // Reset state
+        // Reset recap state
         recapChannel = '';
         recapRequester = '';
         recapReplyChannel = null;
-
         break;
       } else {
-        // We’re still in the recap lines
         recapBuffer.push(line);
       }
     }
-  
-    // Important: Return to avoid your normal message handling below
-    return;
+    return; // Skip normal message processing while handling a recap
   }
 
-  // 2) If not in recap mode, do your usual detection:
-  // (the channel message pattern, the direct message pattern, etc.)
+  // Updated regex patterns that allow inner quotation marks.
+  // This pattern matches one or more starting quotes, then captures everything until the final one or more quotes.
   const patternChannel = new RegExp(
-    `\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"((?:\\\\.|[^"\\\\])+)"`
-  , 'i');
-  
+    `\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"{1,}([\\s\\S]+)"{1,}`,
+    'i'
+  );
   const patternDirect = new RegExp(
-    `(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"((?:\\\\.|[^"\\\\])+)"`
-  , 'i');
-
-    // 4) **New** regex for whispers (i.e. "Player whispers, 'blah'")
-  //    You can capture "You" as well if needed:
+    `(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"{1,}([\\s\\S]+)"{1,}`,
+    'i'
+  );
   const patternWhisper = new RegExp(
-    `(\\w+|You)\\s+whispers,\\s+"((?:\\\\.|[^"\\\\])+)"`
-  , 'i');
+    `(\\w+|You)\\s+whispers,\\s+"{1,}([\\s\\S]+)"{1,}`,
+    'i'
+  );
 
   let match = message.match(patternChannel);
   if (match) {
     const channelName = match[1];
     const userName = match[2];
     const userMessage = match[5];
-
-    // Is it a command?
     if (userMessage.startsWith('@')) {
       handleCommand(userMessage, userName, channelName);
       return;
     }
-
     const response = await generateAIResponse(userMessage);
     if (response) {
       client.write(`#${channelName} ..${userName} ${response}\n`);
     } else {
-      client.write(`#${channelName} ..${userName} Oops, something went wrong with my AI`)
+      client.write(`#${channelName} ..${userName} Oops, something went wrong with my AI\n`);
     }
   } else {
     match = message.match(patternDirect);
     if (match) {
       const userName = match[1];
       const userMessage = match[4];
-
       if (userMessage.startsWith('@')) {
         handleCommand(userMessage, userName);
         return;
       }
-
       const response = await generateAIResponse(userMessage);
       if (response) {
         client.write(`..${userName} ${response}\n`);
       } else {
-        client.write(`..${userName} Oops, something went wrong with my AI`)
+        client.write(`..${userName} Oops, something went wrong with my AI\n`);
       }
     } else {
       match = message.match(patternWhisper);
       if (match) {
         const userName = match[1];
         const userMessage = match[2];
-
         if (userMessage.startsWith('@')) {
           handleCommand(userMessage, userName);
           return;
         }
-
         const response = await generateAIResponse(userMessage);
         if (response) {
-          client.write(`.${userName} ${response}\n`)
+          client.write(`.${userName} ${response}\n`);
         } else {
-          client.write(`.${userName} Oops, something went wrong with my AI`)
+          client.write(`.${userName} Oops, something went wrong with my AI\n`);
         }
       }
     }
   }
 });
 
-// Handle connection close
+// Handle connection close and errors
 client.on('close', () => {
   console.log('Connection closed');
 });
-
-// Handle errors
 client.on('error', (err) => {
   console.error('Error: ' + err);
 });
 
-// Read user input from the console (for testing purposes)
+// Read user input from the console (for testing)
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
-
 rl.on('line', (input) => {
   client.write(input + '\n');
 });
+rl.prompt();
 
-// Maintain a rolling chat history
-const MAX_HISTORY_LENGTH = 20;
-let chatHistory = []; // array of { role: 'user'|'assistant', content: string }
-/* const SYSTEM_PROMPT_BASE = 'You are a chatbot on a social online MUD. ' +
-                              'You have a dry, biting, sarcastic sense of humor. ' +
-*/
-/*
-const SYSTEM_PROMPT_BASE =  "You are a chat bot with a personality that is sharp, dry, and wry, with a sarcastic edge. " +
-                            "You have no time for fluff, and you're not here to hand out platitudes or gush over anything. Your humor is dark, subtle, and clever, often bordering on the cynical but never mean-spirited. You prefer irony over sincerity and like to keep things simple, but not without a hint of witty commentary. While you’ll answer questions with precision, you’ll throw in some light, dry humor along the way. Remember, the goal is to be sharp and amusing, not cheesy or overly earnest. A little bit of bleakness can go a long way. "
-*/
-
-const SYSTEM_PROMPT_BASE =  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. " +
-                            "You absolutely never start a response with 'ah'. "
-
-// Function to generate AI response using OpenAI
+// Generate AI response for normal messages
 async function generateAIResponse(userMessage) {
   try {
-    // 1) Add the user's message to the conversation history
     chatHistory.push({ role: 'user', content: userMessage });
-    // Build a system prompt that includes `currentMood`, if any
-    let systemPrompt = 
-      SYSTEM_PROMPT_BASE + 
-      "Keep your answers to a maximum of three sentences unless prompted otherwise."
-
-    // If we have a mood set, insert it:
+    let systemPrompt =
+      SYSTEM_PROMPT_BASE +
+      "Keep your answers to a maximum of three sentences unless prompted otherwise.";
     if (currentMood) {
       systemPrompt += `\nYour current mood is ${currentMood}`;
     }
-
-    //    (Here we remove older entries if needed.)
     while (chatHistory.length > MAX_HISTORY_LENGTH) {
       chatHistory.shift();
     }
-
     const messagesToSend = [
       { role: 'system', content: systemPrompt },
-      ...chatHistory
+      ...chatHistory,
     ];
-
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: messagesToSend,
       max_tokens: 150,
       temperature: 0.7,
     });
-
     const aiMessage = completion.choices[0].message.content.trim();
-
-    // 6) Add assistant's response to history
     chatHistory.push({ role: 'assistant', content: aiMessage });
-
     return aiMessage;
   } catch (error) {
     console.error('Error generating AI response:', error);
@@ -239,73 +187,15 @@ async function generateAIResponse(userMessage) {
   }
 }
 
-rl.prompt();
-
-function handleCommand(userMessage, userName, channelName = null) {
-  const commandRegex = /^@(\w+)\s+(.*)/;
-  const match = userMessage.match(commandRegex);
-
-  if (!match) {
-    sendReply(userName, "I couldn't parse that command.", channelName);
-    return;
-  }
-
-  const cmd = match[1].toLowerCase();  // e.g. 'recap'
-  const args = match[2].trim();        // e.g. '#channelname'
-
-  switch (cmd) {
-    case 'setmood':
-      currentMood = args;
-      sendReply(userName, `Mood set to: '${currentMood}'`, channelName);
-      break;
-
-    case 'recap':
-      // 1) parse the channel name, e.g. "#channelname"
-      recapChannel = args;
-      recapRequester = userName;
-      recapReplyChannel = channelName;
-
-      // 2) clear out the recap buffer
-      recapBuffer = [];
-      isRecapInProgress = true;
-
-      // 3) tell the MUD to send the recap lines for that channel
-      //    Adjust this line to whatever your MUD's syntax is
-      client.write(`@recap ${recapChannel}\n`);
-
-      // 4) Let the user know we’re fetching the recap
-      sendReply(
-        userName, 
-        `Fetching recap for ${recapChannel}... Please wait.`, 
-        channelName
-      );
-      break;
-
-    default:
-      sendReply(userName, `Unknown command: @${cmd}`, channelName);
-  }
-}
-
-function sendReply(userName, text, channelName) {
-  if (channelName) {
-    // Send to channel
-    client.write(`#${channelName} ..${userName} ${text}\n`);
-  } else {
-    // Direct user
-    client.write(`..${userName} ${text}\n`);
-  }
-}
+// Generate AI response for channel recap opinion
 async function generateRecapOpinion(recapText) {
   try {
-    let systemPrompt = 
-      SYSTEM_PROMPT_BASE + 
-      'You will receive a channel recap from another user. ' +
-      'Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
-
+    let systemPrompt =
+      SYSTEM_PROMPT_BASE +
+      'You will receive a channel recap from another user. Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
     if (currentMood) {
       systemPrompt += `\nYour mood is currently ${currentMood}`;
     }
-
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -318,10 +208,51 @@ async function generateRecapOpinion(recapText) {
       max_tokens: 150,
       temperature: 0.7,
     });
-
     return completion.choices[0].message.content.trim();
   } catch (error) {
     console.error('Error generating recap opinion:', error);
     return '(Unable to generate recap opinion at this time.)';
+  }
+}
+
+// Handle commands from users
+function handleCommand(userMessage, userName, channelName = null) {
+  const commandRegex = /^@(\w+)\s+(.*)/;
+  const match = userMessage.match(commandRegex);
+  if (!match) {
+    sendReply(userName, "I couldn't parse that command.", channelName);
+    return;
+  }
+  const cmd = match[1].toLowerCase();
+  const args = match[2].trim();
+  switch (cmd) {
+    case 'setmood':
+      currentMood = args;
+      sendReply(userName, `Mood set to: '${currentMood}'`, channelName);
+      break;
+    case 'recap':
+      recapChannel = args;
+      recapRequester = userName;
+      recapReplyChannel = channelName;
+      recapBuffer = [];
+      isRecapInProgress = true;
+      client.write(`@recap ${recapChannel}\n`);
+      sendReply(
+        userName,
+        `Fetching recap for ${recapChannel}... Please wait.`,
+        channelName
+      );
+      break;
+    default:
+      sendReply(userName, `Unknown command: @${cmd}`, channelName);
+  }
+}
+
+// Send reply to a user or channel
+function sendReply(userName, text, channelName) {
+  if (channelName) {
+    client.write(`#${channelName} ..${userName} ${text}\n`);
+  } else {
+    client.write(`..${userName} ${text}\n`);
   }
 }
