@@ -91,20 +91,18 @@ client.on('data', async (data) => {
   // 2) If not in recap mode, do your usual detection:
   // (the channel message pattern, the direct message pattern, etc.)
   const patternChannel = new RegExp(
-    `\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`,
-    'i'
-  );
+    `\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"((?:\\\\.|[^"\\\\])+)"`
+  , 'i');
+  
   const patternDirect = new RegExp(
-    `(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"([^"]+)"`,
-    'i'
-  );
+    `(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${process.env.BOT_NAME}\\),\\s+"((?:\\\\.|[^"\\\\])+)"`
+  , 'i');
 
     // 4) **New** regex for whispers (i.e. "Player whispers, 'blah'")
   //    You can capture "You" as well if needed:
   const patternWhisper = new RegExp(
-    `(\\w+|You)\\s+whispers,\\s+"([^"]+)"`,
-    'i'
-  );
+    `(\\w+|You)\\s+whispers,\\s+"((?:\\\\.|[^"\\\\])+)"`
+  , 'i');
 
   let match = message.match(patternChannel);
   if (match) {
