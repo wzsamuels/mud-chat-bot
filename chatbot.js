@@ -24,7 +24,7 @@ let chatHistory = [];
 
 // Base system prompt for AI responses
 const SYSTEM_PROMPT_BASE =
-  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You are snarky to a small degree to give some flavor to your responses. You absolutely never start a response with 'ah'. ";
+  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You absolutely never start a response with 'ah'. ";
 
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
