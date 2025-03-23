@@ -274,7 +274,7 @@ function handleCommand(userMessage, userName, {whisper, channelName}) {
       sendReply(userName, `@recap [channel] - Humorously recaps [channel]'s recent activity.`, {whisper: true});
       sendReply(userName, `@mood [mood] - Appends [mood] to ChatBot's system prompt.`, {whisper: true});
       sendReply(userName, `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`, {whisper: true});
-      sendReply(userName, `The are also some built-in prompts: "anime", "snarky", and "smart".`, {whisper: true});
+      sendReply(userName, `The are also some built-in prompts: "anime", "snarky", and "smart". "Snarky" is the default prompt.`, {whisper: true});
       break;
     default:
       sendReply(userName, `Unknown command: @${cmd}`, {channelName: channelName});
