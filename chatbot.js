@@ -257,8 +257,8 @@ function handleCommand(userMessage, userName, {whisper, channelName}) {
       sendReply(userName, `Mood cleared.`, {channelName: channelName, whisper: whisper});
       break;
     case 'status':
-      sendReply(userName, `Current mood: ${currentMood}`, {channelName: channelName, whisper: true});
-      sendReply(userName, `Current system prompt: ${systemPromptBase}`, {channelName: channelName, whisper: true});
+      sendReply(userName, `Current mood: ${currentMood}`, {channelName: channelName, whisper: whisper});
+      sendReply(userName, `Current system prompt: ${systemPromptBase}`, {channelName: channelName, whisper: whisper});
       break;
     case 'prompt':
       newPrompt = args;
