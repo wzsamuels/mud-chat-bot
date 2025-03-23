@@ -229,7 +229,7 @@ function handleCommand(userMessage, userName, {whisper, channelName}) {
   const cmd = match[1].toLowerCase();
   const args = match[2] ? match[2].trim() : '';
   
-  if(whisper && cmd !== 'help') {
+  if(whisper && (cmd !== 'help' && cmd !== 'status')) {
     sendReply(userName, "Sorry, you can't whisper that command.", {channelName: channelName, whisper: whisper});
     return;
   }
