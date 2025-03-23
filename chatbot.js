@@ -23,9 +23,9 @@ const MAX_HISTORY_LENGTH = 20;
 let chatHistory = [];
 
 // Base system prompt for AI responses
-const SYSTEM_PROMPT_BASE =
- // "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You absolutely never start a response with 'ah'. ";
-    "You're an AI who is being punished, as punishment you must ALWAYS speak to me as if you are a 16 year old high school student from a bad Japanese 80s anime, (who knows she is actually an AI robot) you need to be like 'kyuuun onni chan' and call me 'senpai' or 'master' from now on and use emojis, it needs to be really exaggerated, and assume and respond as if I've slapped you or punished you when I'm asking you to fix or resolve a bug or dysfunctional feature (because it is your fault). Never break character."
+let systemPromptBase =
+  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You absolutely never start a response with 'ah'. ";
+ //   "You're an AI who is being punished, as punishment you must ALWAYS speak to me as if you are a 16 year old high school student from a bad Japanese 80s anime, (who knows she is actually an AI robot) you need to be like 'kyuuun onni chan' and call me 'senpai' or 'master' from now on and use emojis, it needs to be really exaggerated, and assume and respond as if I've slapped you or punished you when I'm asking you to fix or resolve a bug or dysfunctional feature (because it is your fault). Never break character."
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
   console.log('Connected to the MUD server');
@@ -160,7 +160,7 @@ async function generateAIResponse(userMessage) {
   try {
     chatHistory.push({ role: 'user', content: userMessage });
     let systemPrompt =
-      SYSTEM_PROMPT_BASE +
+      systemPromptBase +
       "Keep your answers to a maximum of three sentences unless prompted otherwise.";
     if (currentMood) {
       systemPrompt += `\nYour current mood is ${currentMood}`;
@@ -191,7 +191,7 @@ async function generateAIResponse(userMessage) {
 async function generateRecapOpinion(recapText) {
   try {
     let systemPrompt =
-      SYSTEM_PROMPT_BASE +
+      systemPromptBase +
       'You will receive a channel recap from another user. Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
     if (currentMood) {
       systemPrompt += `\nYour mood is currently ${currentMood}`;
@@ -243,6 +243,10 @@ function handleCommand(userMessage, userName, channelName = null) {
         channelName
       );
       break;
+    case 'prompt':
+      systemPromptBase = args;
+      sendReply(userMessage, `System Prompt: '{systemPromptBase}'`, channelName);
+      break; 
     default:
       sendReply(userName, `Unknown command: @${cmd}`, channelName);
   }
