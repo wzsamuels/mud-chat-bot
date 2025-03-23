@@ -22,10 +22,13 @@ let recapReplyChannel = null;
 const MAX_HISTORY_LENGTH = 20;
 let chatHistory = [];
 
+const ANIME_PROMPT = "You're an AI who is being punished, as punishment you must ALWAYS speak to me as if you are a 16 year old high school student from a bad Japanese 80s anime, (who knows she is actually an AI robot) you need to be like 'kyuuun onni chan' and call me 'senpai' or 'master' from now on and use emojis, it needs to be really exaggerated, and assume and respond as if I've slapped you or punished you when I'm asking you to fix or resolve a bug or dysfunctional feature (because it is your fault). Never break character."
+const SNARKY_PROMPT = 'You are a chatbot on a social online MUD. You have a snarky, dry, biting, sarcastic sense of humor.'
+const SMART_PROMPT = "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You absolutely never start a response with 'ah'. ";
+
 // Base system prompt for AI responses
-let systemPromptBase =
-  "You are a very erudite chat bot, highly educated with multiple PhD's. You provided information, advice, and insight at a graduate level. You absolutely never start a response with 'ah'. ";
- //   "You're an AI who is being punished, as punishment you must ALWAYS speak to me as if you are a 16 year old high school student from a bad Japanese 80s anime, (who knows she is actually an AI robot) you need to be like 'kyuuun onni chan' and call me 'senpai' or 'master' from now on and use emojis, it needs to be really exaggerated, and assume and respond as if I've slapped you or punished you when I'm asking you to fix or resolve a bug or dysfunctional feature (because it is your fault). Never break character."
+let systemPromptBase = SNARKY_PROMPT;
+  
 // Connect to the MUD server
 client.connect(process.env.PORT, process.env.HOST, () => {
   console.log('Connected to the MUD server');
@@ -226,7 +229,7 @@ function handleCommand(userMessage, userName, channelName = null) {
   const cmd = match[1].toLowerCase();
   const args = match[2].trim();
   switch (cmd) {
-    case 'setmood':
+    case 'mood':
       currentMood = args;
       sendReply(userName, `Mood set to: '${currentMood}'`, channelName);
       break;
@@ -244,9 +247,29 @@ function handleCommand(userMessage, userName, channelName = null) {
       );
       break;
     case 'prompt':
-      systemPromptBase = args;
+      newPrompt = args;
+      switch(newPrompt) {
+        case 'anime':
+          systemPromptBase = ANIME_PROMPT;
+          break;
+        case 'snarky':
+          systemPromptBase = SNARKY_PROMPT;
+          break;
+        case 'smart':
+          systemPromptBase = SMART_PROMPT;
+          break;
+        default:
+          systemPromptBase = newPrompt;
+      }
       sendReply(userName, `System prompt set to: '${systemPromptBase}'`, channelName);
-      break; 
+      break;
+    case 'help':
+      sendReply(userMessage, `ChatBot has some commands to extend it's functionality.
+                              @recap [channel] - Humorously recaps [channel]'s recent activity.
+                              @mood [mood] - Appends [mood] to ChatBot's system prompt.
+                              @prompt [prompt] - Set's ChatBot's system prompt to [prompt]. The are also some built-in prompts: "anime", "snarky", and "smart".
+                              `);
+      break;
     default:
       sendReply(userName, `Unknown command: @${cmd}`, channelName);
   }
@@ -259,4 +282,9 @@ function sendReply(userName, text, channelName) {
   } else {
     client.write(`..${userName} ${text}\n`);
   }
+}
+
+// Send whisper to a user
+function sendWhisper(userName, text) {
+  client.write(`.${userName} ${text}`)
 }
