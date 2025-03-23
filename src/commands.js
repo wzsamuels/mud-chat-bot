@@ -68,7 +68,7 @@ export function handleCommand(client, userMessage, userName, {whisper, channelNa
       sendReply(client, userName, `System prompt set.`, {channelName: channelName, whisper: whisper});
       break;
     case 'help':
-      sendReply(client, userName, `ChatBot has some commands to extend it's functionality. Only this @help command can be whispered.`, {whisper: true});
+      sendReply(client, userName, `ChatBot has some commands to extend it's functionality. Only @help and @status commands can be whispered.`, {whisper: true});
       sendReply(client, userName, `@recap [channel] - Humorously recaps [channel]'s recent activity.`, {whisper: true});
       sendReply(client, userName, `@mood [mood] - Appends [mood] to ChatBot's system prompt.`, {whisper: true});
       sendReply(client, userName, `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`, {whisper: true});
