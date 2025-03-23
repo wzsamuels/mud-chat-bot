@@ -270,11 +270,7 @@ function handleCommand(userMessage, userName, {whisper = true, channelName = nul
       sendReply(userName, `System prompt set.`, channelName);
       break;
     case 'help':
-      sendWhisper(userName, `ChatBot has some commands to extend it's functionality.
-                              @recap [channel] - Humorously recaps [channel]'s recent activity.
-                              @mood [mood] - Appends [mood] to ChatBot's system prompt.
-                              @prompt [prompt] - Set's ChatBot's system prompt to [prompt]. The are also some built-in prompts: "anime", "snarky", and "smart".
-                              `);
+      sendWhisper(userName, `ChatBot has some commands to extend it's functionality.\n@recap [channel] - Humorously recaps [channel]'s recent activity.\n@mood [mood] - Appends [mood] to ChatBot's system prompt.\n@prompt [prompt] - Set's ChatBot's system prompt to [prompt]. The are also some built-in prompts: "anime", "snarky", and "smart".`);
       break;
     default:
       sendReply(userName, `Unknown command: @${cmd}`, channelName);
