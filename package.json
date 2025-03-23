@@ -1,14 +1,15 @@
 {
   "name": "mud-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "A chatbot for MUD servers",
+  "type": "module",
+  "main": "src/bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/bot.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "dotenv": "^16.4.5",
     "openai": "^4.47.1",
