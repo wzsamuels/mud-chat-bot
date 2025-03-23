@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   apps: [{
     name: 'mud-bot',
     script: 'src/bot.js',
