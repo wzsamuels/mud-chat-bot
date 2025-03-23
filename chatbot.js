@@ -126,7 +126,7 @@ client.on('data', async (data) => {
         const userName = match[1];
         const userMessage = match[2];
         if (userMessage.startsWith('@')) {
-          handleCommand(userMessage, userName);
+          handleCommand(userMessage, userName, {whisper: true});
           return;
         }
         const response = await generateAIResponse(userMessage);
@@ -219,15 +219,21 @@ async function generateRecapOpinion(recapText) {
 }
 
 // Handle commands from users
-function handleCommand(userMessage, userName, channelName = null) {
-  const commandRegex = /^@(\w+)\s+(.*)/;
+function handleCommand(userMessage, userName, {whisper = true, channelName = null}) {
+  const commandRegex = /^@(\w+)(?:\s+(.*))?/;
   const match = userMessage.match(commandRegex);
   if (!match) {
-    sendReply(userName, "I couldn't parse that command.", channelName);
+    sendReply(userName, "I couldn't parse that command.", channelName, whisper);
     return;
   }
   const cmd = match[1].toLowerCase();
-  const args = match[2].trim();
+  const args = match[2] ? match[2].trim() : '';
+  
+  if(whisper && cmd !== 'help') {
+    sendReply(userName, "Sorry, you can't whisper that command.", channelName, whisper);
+    return;
+  }
+
   switch (cmd) {
     case 'mood':
       currentMood = args;
@@ -264,7 +270,7 @@ function handleCommand(userMessage, userName, channelName = null) {
       sendReply(userName, `System prompt set.`, channelName);
       break;
     case 'help':
-      sendReply(userMessage, `ChatBot has some commands to extend it's functionality.
+      sendWhisper(userMessage, `ChatBot has some commands to extend it's functionality.
                               @recap [channel] - Humorously recaps [channel]'s recent activity.
                               @mood [mood] - Appends [mood] to ChatBot's system prompt.
                               @prompt [prompt] - Set's ChatBot's system prompt to [prompt]. The are also some built-in prompts: "anime", "snarky", and "smart".
@@ -276,8 +282,10 @@ function handleCommand(userMessage, userName, channelName = null) {
 }
 
 // Send reply to a user or channel
-function sendReply(userName, text, channelName) {
-  if (channelName) {
+function sendReply(userName, text, channelName = null, whisper = false) {
+  if(whisper) {
+    client.write(`.${userName} ${text}`)
+  } else if (channelName) {
     client.write(`#${channelName} ..${userName} ${text}\n`);
   } else {
     client.write(`..${userName} ${text}\n`);
