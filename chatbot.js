@@ -252,6 +252,14 @@ function handleCommand(userMessage, userName, {whisper, channelName}) {
         {channelName: channelName}
       );
       break;
+    case 'clearmood':
+      currentMood = '';
+      sendReply(userName, `Mood cleared.`, {channelName: channelName, whisper: whisper});
+      break;
+    case 'status':
+      sendReply(userName, `Current mood: ${currentMood}`, {channelName: channelName, whisper: true});
+      sendReply(userName, `Current system prompt: ${systemPromptBase}`, {channelName: channelName, whisper: true});
+      break;
     case 'prompt':
       newPrompt = args;
       switch(newPrompt.toLowerCase()) {
@@ -274,6 +282,8 @@ function handleCommand(userMessage, userName, {whisper, channelName}) {
       sendReply(userName, `@recap [channel] - Humorously recaps [channel]'s recent activity.`, {whisper: true});
       sendReply(userName, `@mood [mood] - Appends [mood] to ChatBot's system prompt.`, {whisper: true});
       sendReply(userName, `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`, {whisper: true});
+      sendReply(userName, `@clearmood - Clears ChatBot's mood.`, {whisper: true});
+      sendReply(userName, `@status - Shows ChatBot's current mood and system prompt.`, {whisper: true});
       sendReply(userName, `The are also some built-in prompts: "anime", "snarky", and "smart". "Snarky" is the default prompt.`, {whisper: true});
       break;
     default:
