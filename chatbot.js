@@ -259,9 +259,9 @@ function handleCommand(userMessage, userName, channelName = null) {
           systemPromptBase = SMART_PROMPT;
           break;
         default:
-          systemPromptBase = newPrompt;
+          systemPromptBase = newPrompt;          
       }
-      sendReply(userName, `System prompt set to: '${systemPromptBase}'`, channelName);
+      sendReply(userName, `System prompt set.`, channelName);
       break;
     case 'help':
       sendReply(userMessage, `ChatBot has some commands to extend it's functionality.
