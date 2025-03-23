@@ -245,7 +245,7 @@ function handleCommand(userMessage, userName, channelName = null) {
       break;
     case 'prompt':
       systemPromptBase = args;
-      sendReply(userMessage, `System Prompt: '{systemPromptBase}'`, channelName);
+      sendReply(userMessage, `System Prompt: '${systemPromptBase}'`, channelName);
       break; 
     default:
       sendReply(userName, `Unknown command: @${cmd}`, channelName);
