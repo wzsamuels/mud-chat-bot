@@ -2,31 +2,50 @@ import net from 'net';
 import readline from 'readline';
 import { BOT_NAME, BOT_PASSWORD, HOST, PORT } from './config.js';
 import { handleMessage } from './messageHandler.js';
+import { logError } from './utils.js';
 
-// Create a socket client
-const client = new net.Socket();
+let client;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 5000; // 5 seconds
 
-// Connect to the MUD server
-client.connect(PORT, HOST, () => {
-  console.log('Connected to the MUD server');
-  client.write(`connect ${BOT_NAME} ${BOT_PASSWORD}\n`);
-});
+function connect() {
+  client = new net.Socket();
+  
+  client.connect(PORT, HOST, () => {
+    console.log('Connected to the MUD server');
+    client.write(`connect ${BOT_NAME} ${BOT_PASSWORD}\n`);
+    reconnectAttempts = 0;
+  });
 
-// Handle incoming data from the server
-client.on('data', async (data) => {
-  const message = data.toString().trim();
-  console.log('Received:', message);
-  await handleMessage(client, message);
-});
+  client.on('data', async (data) => {
+    try {
+      const message = data.toString().trim();
+      console.log('Received:', message);
+      await handleMessage(client, message);
+    } catch (error) {
+      logError(error, 'Message Handling');
+    }
+  });
 
-// Handle connection close and errors
-client.on('close', () => {
-  console.log('Connection closed');
-});
+  client.on('close', () => {
+    console.log('Connection closed');
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+      setTimeout(connect, RECONNECT_DELAY);
+    } else {
+      logError(new Error('Max reconnection attempts reached'), 'Connection');
+      console.error('Max reconnection attempts reached. Exiting...');
+      process.exit(1);
+    }
+  });
 
-client.on('error', (err) => {
-  console.error('Error: ' + err);
-});
+  client.on('error', (err) => {
+    logError(err, 'Socket Error');
+    console.error('Error:', err);
+  });
+}
 
 // Read user input from the console (for testing)
 const rl = readline.createInterface({
@@ -35,7 +54,10 @@ const rl = readline.createInterface({
 });
 
 rl.on('line', (input) => {
-  client.write(input + '\n');
+  if (client && !client.destroyed) {
+    client.write(input + '\n');
+  }
 });
 
-rl.prompt(); 
+rl.prompt();
+connect(); 

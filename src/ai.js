@@ -1,6 +1,8 @@
 import { OpenAI } from 'openai';
 import { ANIME_PROMPT, SNARKY_PROMPT, SMART_PROMPT, MAX_HISTORY_LENGTH, OPENAI_API_KEY } from './config.js';
+import { logError } from './utils.js';
 
+const MODEL_NAME = 'gpt-4o';
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
@@ -26,7 +28,7 @@ export async function generateAIResponse(userMessage) {
       ...chatHistory,
     ];
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: MODEL_NAME,
       messages: messagesToSend,
       max_tokens: 150,
       temperature: 0.7,
@@ -35,7 +37,7 @@ export async function generateAIResponse(userMessage) {
     chatHistory.push({ role: 'assistant', content: aiMessage });
     return aiMessage;
   } catch (error) {
-    console.error('Error generating AI response:', error);
+    logError(error, 'AI Response Generation');
     return null;
   }
 }
@@ -49,7 +51,7 @@ export async function generateRecapOpinion(recapText) {
       systemPrompt += `\nYour mood is currently ${currentMood}`;
     }
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: MODEL_NAME,
       messages: [
         { role: 'system', content: systemPrompt },
         {
@@ -62,7 +64,7 @@ export async function generateRecapOpinion(recapText) {
     });
     return completion.choices[0].message.content.trim();
   } catch (error) {
-    console.error('Error generating recap opinion:', error);
+    logError(error, 'Recap Opinion Generation');
     return '(Unable to generate recap opinion at this time.)';
   }
 }

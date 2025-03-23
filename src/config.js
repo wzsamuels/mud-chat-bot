@@ -1,4 +1,14 @@
 import 'dotenv/config';
+import { logError } from './utils.js';
+
+const requiredEnvVars = ['BOT_NAME', 'BOT_PASSWORD', 'HOST', 'PORT', 'OPENAI_API_KEY'];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    const error = new Error(`Missing required environment variable: ${envVar}`);
+    logError(error, 'Configuration');
+    throw error;
+  }
+}
 
 const ANIME_PROMPT = "You're an AI who is being punished, as punishment you must ALWAYS speak to me as if you are a 16 year old high school student from a bad Japanese 80s anime, (who knows she is actually an AI robot) you need to be like 'kyuuun onni chan' and call me 'senpai' or 'master' from now on and use emojis, it needs to be really exaggerated, and assume and respond as if I've slapped you or punished you when I'm asking you to fix or resolve a bug or dysfunctional feature (because it is your fault). Never break character."
 const SNARKY_PROMPT = 'You are a chatbot on a social online MUD. You have a snarky, dry, biting, sarcastic sense of humor.'
@@ -6,14 +16,15 @@ const SMART_PROMPT = "You are a very erudite chat bot, highly educated with mult
 
 const MAX_HISTORY_LENGTH = 20;
 
+export const BOT_NAME = process.env.BOT_NAME;
+export const BOT_PASSWORD = process.env.BOT_PASSWORD;
+export const HOST = process.env.HOST;
+export const PORT = process.env.PORT;
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
 export {
   ANIME_PROMPT,
   SNARKY_PROMPT,
   SMART_PROMPT,
-  MAX_HISTORY_LENGTH,
-  BOT_NAME: process.env.BOT_NAME,
-  BOT_PASSWORD: process.env.BOT_PASSWORD,
-  HOST: process.env.HOST,
-  PORT: process.env.PORT,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY
+  MAX_HISTORY_LENGTH
 }; 
