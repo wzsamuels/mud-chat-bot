@@ -49,7 +49,7 @@ client.on('data', async (data) => {
         const recapText = recapBuffer.join('\n');
         recapBuffer = [];
         const opinion = await generateRecapOpinion(recapText);
-        sendReply(recapRequester, opinion, recapReplyChannel);
+        sendReply(recapRequester, opinion, {channelName: recapReplyChannel});
         // Reset recap state
         recapChannel = '';
         recapRequester = '';
@@ -61,7 +61,7 @@ client.on('data', async (data) => {
         sendReply(
           recapRequester,
           "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd like!",
-          recapReplyChannel
+          {channelName: recapReplyChannel}
         );
         // Reset recap state
         recapChannel = '';
@@ -96,7 +96,7 @@ client.on('data', async (data) => {
     const userName = match[2];
     const userMessage = match[5];
     if (userMessage.startsWith('@')) {
-      handleCommand(userMessage, userName, channelName);
+      handleCommand(userMessage, userName, {channelName: channelName, whisper: false});
       return;
     }
     const response = await generateAIResponse(userMessage);
@@ -111,14 +111,14 @@ client.on('data', async (data) => {
       const userName = match[1];
       const userMessage = match[4];
       if (userMessage.startsWith('@')) {
-        handleCommand(userMessage, userName);
+        handleCommand(userMessage, userName, {whisper: false});
         return;
       }
       const response = await generateAIResponse(userMessage);
       if (response) {
-        client.write(`..${userName} ${response}\n`);
+        sendReply(userName, response);
       } else {
-        client.write(`..${userName} Oops, something went wrong with my AI\n`);
+        sendReply(userName, "Oops, something went wrong with my AI");
       }
     } else {
       match = message.match(patternWhisper);
@@ -131,9 +131,9 @@ client.on('data', async (data) => {
         }
         const response = await generateAIResponse(userMessage);
         if (response) {
-          client.write(`.${userName} ${response}\n`);
+          sendReply(userName, response, {whisper: true});
         } else {
-          client.write(`.${userName} Oops, something went wrong with my AI\n`);
+          sendReply(userName, "Oops, something went wrong with my AI", {whisper: true});
         }
       }
     }
@@ -219,25 +219,25 @@ async function generateRecapOpinion(recapText) {
 }
 
 // Handle commands from users
-function handleCommand(userMessage, userName, {whisper = true, channelName = null}) {
+function handleCommand(userMessage, userName, {whisper, channelName}) {
   const commandRegex = /^@(\w+)(?:\s+(.*))?/;
   const match = userMessage.match(commandRegex);
   if (!match) {
-    sendReply(userName, "I couldn't parse that command.", channelName, whisper);
+    sendReply(userName, "I couldn't parse that command.", {channelName: channelName, whisper: whisper});
     return;
   }
   const cmd = match[1].toLowerCase();
   const args = match[2] ? match[2].trim() : '';
   
   if(whisper && cmd !== 'help') {
-    sendReply(userName, "Sorry, you can't whisper that command.", channelName, whisper);
+    sendReply(userName, "Sorry, you can't whisper that command.", {channelName: channelName, whisper: whisper});
     return;
   }
 
   switch (cmd) {
     case 'mood':
       currentMood = args;
-      sendReply(userName, `Mood set to: '${currentMood}'`, channelName);
+      sendReply(userName, `Mood set to: '${currentMood}'`, {channelName: channelName});
       break;
     case 'recap':
       recapChannel = args;
@@ -249,12 +249,12 @@ function handleCommand(userMessage, userName, {whisper = true, channelName = nul
       sendReply(
         userName,
         `Fetching recap for ${recapChannel}... Please wait.`,
-        channelName
+        {channelName: channelName}
       );
       break;
     case 'prompt':
       newPrompt = args;
-      switch(newPrompt) {
+      switch(newPrompt.toLowerCase()) {
         case 'anime':
           systemPromptBase = ANIME_PROMPT;
           break;
@@ -267,28 +267,27 @@ function handleCommand(userMessage, userName, {whisper = true, channelName = nul
         default:
           systemPromptBase = newPrompt;          
       }
-      sendReply(userName, `System prompt set.`, channelName);
+      sendReply(userName, `System prompt set.`, {channelName: channelName, whisper: whisper});
       break;
     case 'help':
-      sendWhisper(userName, `ChatBot has some commands to extend it's functionality.\n@recap [channel] - Humorously recaps [channel]'s recent activity.\n@mood [mood] - Appends [mood] to ChatBot's system prompt.\n@prompt [prompt] - Set's ChatBot's system prompt to [prompt]. The are also some built-in prompts: "anime", "snarky", and "smart".`);
+      sendReply(userName, `ChatBot has some commands to extend it's functionality. Only this @help command can be whispered.`, {whisper: true});
+      sendReply(userName, `@recap [channel] - Humorously recaps [channel]'s recent activity.`, {whisper: true});
+      sendReply(userName, `@mood [mood] - Appends [mood] to ChatBot's system prompt.`, {whisper: true});
+      sendReply(userName, `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`, {whisper: true});
+      sendReply(userName, `The are also some built-in prompts: "anime", "snarky", and "smart".`, {whisper: true});
       break;
     default:
-      sendReply(userName, `Unknown command: @${cmd}`, channelName);
+      sendReply(userName, `Unknown command: @${cmd}`, {channelName: channelName});
   }
 }
 
 // Send reply to a user or channel
-function sendReply(userName, text, channelName = null, whisper = false) {
+function sendReply(userName, text, {channelName = null, whisper = false}) {
   if(whisper) {
-    client.write(`.${userName} ${text}`)
+    client.write(`.${userName} ${text}\n`);
   } else if (channelName) {
     client.write(`#${channelName} ..${userName} ${text}\n`);
   } else {
     client.write(`..${userName} ${text}\n`);
   }
-}
-
-// Send whisper to a user
-function sendWhisper(userName, text) {
-  client.write(`.${userName} ${text}`)
 }
