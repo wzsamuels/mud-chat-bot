@@ -46,6 +46,10 @@ export function handleCommand(client, userMessage, userName, {whisper, channelNa
       ai.clearMood();
       sendReply(client, userName, `Mood cleared.`, {channelName: channelName, whisper: whisper});
       break;
+    case 'clearhistory':
+      ai.clearChatHistory();
+      sendReply(client, userName, `Chat history cleared.`, {channelName: channelName, whisper: whisper});
+      break;
     case 'status':
       sendReply(client, userName, `Current mood: ${ai.getMood()}`, {channelName: channelName, whisper: whisper});
       sendReply(client, userName, `Current system prompt: ${ai.getSystemPrompt()}`, {channelName: channelName, whisper: whisper});

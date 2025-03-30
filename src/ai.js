@@ -77,6 +77,10 @@ export function clearMood() {
   currentMood = '';
 }
 
+export function clearChatHistory() {
+  chatHistory = [];
+}
+
 export function getMood() {
   return currentMood;
 }
