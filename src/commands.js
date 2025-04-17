@@ -42,19 +42,23 @@ export function handleCommand(client, userMessage, userName, {whisper, channelNa
         {channelName: channelName}
       );
       break;
-    case 'clearmood':
-      ai.clearMood();
-      sendReply(client, userName, `Mood cleared.`, {channelName: channelName, whisper: whisper});
-      break;
     case 'clearhistory':
       ai.clearChatHistory();
       sendReply(client, userName, `Chat history cleared.`, {channelName: channelName, whisper: whisper});
       break;
     case 'status':
       sendReply(client, userName, `Current mood: ${ai.getMood()}`, {channelName: channelName, whisper: whisper});
-      sendReply(client, userName, `Current system prompt: ${ai.getSystemPrompt()}`, {channelName: channelName, whisper: whisper});
+      sendReply(client, userName, `Current prompt: ${ai.getSystemPrompt()}`, {channelName: channelName, whisper: whisper});
+      const promptHistory = ai.getPromptHistory();
+      if (promptHistory.length > 0) {
+        sendReply(client, userName, `Previous prompts:`, {channelName: channelName, whisper: whisper});
+        for (let i = 0; i < promptHistory.length; i++) {
+          sendReply(client, userName, `[${i + 1}] ${promptHistory[i]}`, {channelName: channelName, whisper: whisper});
+        }
+      }
       break;
     case 'prompt':
+      ai.clearChatHistory();
       let newPrompt = args;
       switch(newPrompt.toLowerCase()) {
         case 'anime':
@@ -66,6 +70,9 @@ export function handleCommand(client, userMessage, userName, {whisper, channelNa
         case 'smart':
           ai.setSystemPrompt(SMART_PROMPT);
           break;
+        case 'punk':
+          ai.setSystemPrompt(PUNK_PROMPT);
+          break;
         default:
           ai.setSystemPrompt(newPrompt);          
       }
@@ -76,9 +83,8 @@ export function handleCommand(client, userMessage, userName, {whisper, channelNa
       sendReply(client, userName, `@recap [channel] - Humorously recaps [channel]'s recent activity.`, {whisper: true});
       sendReply(client, userName, `@mood [mood] - Appends [mood] to ChatBot's system prompt.`, {whisper: true});
       sendReply(client, userName, `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`, {whisper: true});
-      sendReply(client, userName, `@clearmood - Clears ChatBot's mood.`, {whisper: true});
       sendReply(client, userName, `@status - Shows ChatBot's current mood and system prompt.`, {whisper: true});
-      sendReply(client, userName, `The are also some built-in prompts: "anime", "snarky", and "smart". "Snarky" is the default prompt.`, {whisper: true});
+      sendReply(client, userName, `The are also some built-in prompts: "anime", "snarky", "punk", and "smart". "Punk" is the default prompt.`, {whisper: true});
       break;
     default:
       sendReply(client, userName, `Unknown command: @${cmd}`, {channelName: channelName});

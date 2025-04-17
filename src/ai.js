@@ -1,5 +1,5 @@
 import { OpenAI } from 'openai';
-import { ANIME_PROMPT, SNARKY_PROMPT, SMART_PROMPT, MAX_HISTORY_LENGTH, OPENAI_API_KEY } from './config.js';
+import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, OPENAI_API_KEY } from './config.js';
 import { logError } from './utils.js';
 
 const MODEL_NAME = 'gpt-4o';
@@ -8,7 +8,8 @@ const openai = new OpenAI({
 });
 
 let chatHistory = [];
-let systemPromptBase = SNARKY_PROMPT;
+let promptHistory = [];
+let systemPromptBase = PUNK_PROMPT;
 let currentMood = '';
 
 export async function generateAIResponse(userMessage) {
@@ -20,7 +21,7 @@ export async function generateAIResponse(userMessage) {
     if (currentMood) {
       systemPrompt += `\nYour current mood is ${currentMood}`;
     }
-    while (chatHistory.length > MAX_HISTORY_LENGTH) {
+    while (chatHistory.length > MAX_CHAT_HISTORY_LENGTH) {
       chatHistory.shift();
     }
     const messagesToSend = [
@@ -73,19 +74,27 @@ export function setMood(mood) {
   currentMood = mood;
 }
 
-export function clearMood() {
-  currentMood = '';
-}
-
 export function clearChatHistory() {
   chatHistory = [];
+}
+
+export function clearPromptHistory() {
+  promptHistory = [];
 }
 
 export function getMood() {
   return currentMood;
 }
 
+export function getPromptHistory() {
+  return promptHistory;
+}
+
 export function setSystemPrompt(prompt) {
+  promptHistory.push(systemPromptBase);
+  if (promptHistory.length >= MAX_CHAT_HISTORY_LENGTH) {
+    promptHistory.shift();
+  }
   systemPromptBase = prompt;
 }
 
