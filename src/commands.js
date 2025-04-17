@@ -83,7 +83,7 @@ export function handleCommand(client, userMessage, userName, {whisper, channelNa
       sendReply(client, userName, `@recap [channel] - Humorously recaps [channel]'s recent activity.`, {whisper: true});
       sendReply(client, userName, `@mood [mood] - Appends [mood] to ChatBot's system prompt.`, {whisper: true});
       sendReply(client, userName, `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`, {whisper: true});
-      sendReply(client, userName, `@status - Shows ChatBot's current mood and system prompt.`, {whisper: true});
+      sendReply(client, userName, `@status - Shows ChatBot's current mood, system prompt, and recent prompt history.`, {whisper: true});
       sendReply(client, userName, `The are also some built-in prompts: "anime", "snarky", "punk", and "smart". "Punk" is the default prompt.`, {whisper: true});
       break;
     default:
