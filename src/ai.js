@@ -1,5 +1,5 @@
 import { OpenAI } from 'openai';
-import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, OPENAI_API_KEY } from './config.js';
+import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, OPENAI_API_KEY, DEFAULT_TEMP } from './config.js';
 import { logError } from './utils.js';
 
 const MODEL_NAME = 'gpt-4o';
@@ -11,6 +11,7 @@ let chatHistory = [];
 let promptHistory = [];
 let systemPromptBase = PUNK_PROMPT;
 let currentMood = '';
+let temperature = DEFAULT_TEMP
 
 export async function generateAIResponse(userMessage) {
   try {

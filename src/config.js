@@ -23,6 +23,7 @@ export const BOT_PASSWORD = process.env.BOT_PASSWORD;
 export const HOST = process.env.HOST;
 export const PORT = process.env.PORT;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+export const DEFAULT_TEMP = 0.7;
 
 export {
   ANIME_PROMPT,

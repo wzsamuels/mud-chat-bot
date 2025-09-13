@@ -1,98 +1,77 @@
-import { BOT_NAME } from './config.js';
 import * as ai from './ai.js';
 import * as commands from './commands.js';
 import { sendReply } from './utils.js';
+import { combinedPattern } from './messagePatterns.js';
 
-function createMessagePatterns() {
-  return {
-    channel: new RegExp(
-      `\\[([^\\]]+)]\\s+(\\w+)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${BOT_NAME}\\),\\s+"{1,}([\\s\\S]+)"{1,}`,
-      'i'
-    ),
-    direct: new RegExp(
-      `(\\w+|You)\\s+(says|exclaims|asks)\\s+\\((to|at|of)\\s+${BOT_NAME}\\),\\s+"{1,}([\\s\\S]+)"{1,}`,
-      'i'
-    ),
-    whisper: new RegExp(
-      `(\\w+|You)\\s+whispers,\\s+"{1,}([\\s\\S]+)"{1,}`,
-      'i'
-    )
-  };
+async function processChatMessage(client, userMessage, userName, replyOptions) {
+  if (userMessage.startsWith('@')) {
+    commands.handleCommand(client, userMessage, userName, replyOptions);
+    return;
+  }
+
+  const response = await ai.generateAIResponse(userMessage);
+  if (response) {
+    sendReply(client, userName, response, replyOptions);
+  } else {
+    sendReply(client, userName, "Oops, something went wrong with my AI", replyOptions);
+  }
+}
+
+async function handleRecap(client, message) {
+  const lines = message.split(/\r?\n/);
+  for (const line of lines) {
+    const result = commands.handleRecapLine(line);
+    if (result.isComplete) {
+      if (result.isError) {
+        sendReply(
+          client,
+          result.recapRequester,
+          "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd like!",
+          {channelName: result.recapReplyChannel}
+        );
+      } else {
+        const opinion = await ai.generateRecapOpinion(result.recapText);
+        sendReply(client, result.recapRequester, opinion, {channelName: result.recapReplyChannel});
+      }
+      return;
+    }
+  }
+}
+
+async function handleNormalMessage(client, message) {
+  const match = message.match(combinedPattern);
+
+  if (match) {
+    const groups = match.groups;
+    let userName, userMessage, replyOptions;
+
+    if (groups.channelName) {
+      userName = groups.userNameChannel;
+      userMessage = groups.userMessageChannel;
+      replyOptions = { channelName: groups.channelName, whisper: false };
+    } else if (groups.userNameDirect) {
+      userName = groups.userNameDirect;
+      userMessage = groups.userMessageDirect;
+      replyOptions = { whisper: false };
+    } else if (groups.userNameWhisper) {
+      userName = groups.userNameWhisper;
+      userMessage = groups.userMessageWhisper;
+      replyOptions = { whisper: true };
+    }
+
+    if (userName && userMessage) {
+      await processChatMessage(client, userMessage, userName, replyOptions);
+    }
+  }
 }
 
 export async function handleMessage(client, message) {
-  const patterns = createMessagePatterns();
-  
   // If in recap mode, process recap lines
   if (commands.isRecapInProgress) {
-    const lines = message.split(/\r?\n/);
-    for (const line of lines) {
-      const result = commands.handleRecapLine(line);
-      if (result.isComplete) {
-        if (result.isError) {
-          sendReply(
-            client,
-            result.recapRequester,
-            "Sorry, I can't recap that channel (membership requested). If you own the channel, add me if you'd like!",
-            {channelName: result.recapReplyChannel}
-          );
-        } else {
-          const opinion = await ai.generateRecapOpinion(result.recapText);
-          sendReply(client, result.recapRequester, opinion, {channelName: result.recapReplyChannel});
-        }
-        return;
-      }
-    }
+    await handleRecap(client, message);
     return;
   }
 
   // Process normal messages
-  let match = message.match(patterns.channel);
-  if (match) {
-    const channelName = match[1];
-    const userName = match[2];
-    const userMessage = match[5];
-    if (userMessage.startsWith('@')) {
-      commands.handleCommand(client, userMessage, userName, {channelName: channelName, whisper: false});
-      return;
-    }
-    const response = await ai.generateAIResponse(userMessage);
-    if (response) {
-      sendReply(client, userName, response, {channelName: channelName});
-    } else {
-      sendReply(client, userName, "Oops, something went wrong with my AI", {channelName: channelName});
-    }
-  } else {
-    match = message.match(patterns.direct);
-    if (match) {
-      const userName = match[1];
-      const userMessage = match[4];
-      if (userMessage.startsWith('@')) {
-        commands.handleCommand(client, userMessage, userName, {whisper: false});
-        return;
-      }
-      const response = await ai.generateAIResponse(userMessage);
-      if (response) {
-        sendReply(client, userName, response);
-      } else {
-        sendReply(client, userName, "Oops, something went wrong with my AI");
-      }
-    } else {
-      match = message.match(patterns.whisper);
-      if (match) {
-        const userName = match[1];
-        const userMessage = match[2];
-        if (userMessage.startsWith('@')) {
-          commands.handleCommand(client, userMessage, userName, {whisper: true});
-          return;
-        }
-        const response = await ai.generateAIResponse(userMessage);
-        if (response) {
-          sendReply(client, userName, response, {whisper: true});
-        } else {
-          sendReply(client, userName, "Oops, something went wrong with my AI", {whisper: true});
-        }
-      }
-    }
-  }
-} 
+  await handleNormalMessage(client, message);
+}
