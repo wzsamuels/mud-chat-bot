@@ -1,8 +1,7 @@
 import { OpenAI } from 'openai';
-import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, API_KEY, DEFAULT_TEMP } from './config.js';
+import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, API_KEY, DEFAULT_TEMP, AI_MODEL } from './config.js';
 import { logError } from './utils.js';
 
-const MODEL_NAME = 'gpt-4o';
 const openai = new OpenAI({
   apiKey: API_KEY,
 });
@@ -17,7 +16,7 @@ let maxTokens = 250;
 async function createChatCompletion(messages, errorContext) {
   try {
     const completion = await openai.chat.completions.create({
-      model: MODEL_NAME,
+      model: AI_MODEL,
       messages,
       max_tokens: maxTokens,
       temperature: temperature,
@@ -28,6 +27,8 @@ async function createChatCompletion(messages, errorContext) {
     return null;
   }
 }
+
+console.log(AI_MODEL)
 
 export async function generateAIResponse(userMessage) {
   chatHistory.push({ role: 'user', content: userMessage });
