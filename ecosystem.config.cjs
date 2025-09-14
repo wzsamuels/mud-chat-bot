@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'mud-bot',
-    script: 'src/bot.js',
+    script: 'main.js',
     watch: false,
     max_memory_restart: '1G',
     env: {
@@ -12,4 +12,4 @@ module.exports = {
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
     merge_logs: true
   }]
-}; 
+};

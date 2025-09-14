@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "A chatbot for MUD servers",
   "type": "module",
-  "main": "src/bot.js",
+  "main": "main.js",
   "scripts": {
-    "start": "node src/bot.js",
+    "start": "node main.js",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:stop": "pm2 stop mud-bot",
     "pm2:restart": "pm2 restart mud-bot",

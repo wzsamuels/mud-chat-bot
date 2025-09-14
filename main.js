@@ -1,33 +1,70 @@
 import net from 'net';
-import { MUD_HOST, MUD_PORT, BOT_NAME, BOT_PASSWORD } from './src/config.js';
+import readline from 'readline';
+import {
+  BOT_NAME,
+  BOT_PASSWORD,
+  MUD_HOST,
+  MUD_PORT,
+} from './src/config.js';
 import { handleMessage } from './src/messageHandler.js';
+import { logError } from './src/utils.js';
 
-function startBot() {
-  const client = new net.Socket();
+let client;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 5000; // 5 seconds
+
+function connect() {
+  client = new net.Socket();
 
   client.connect(MUD_PORT, MUD_HOST, () => {
-    console.log(`Connected to ${MUD_HOST}:${MUD_PORT}.`);
-    // Login
+    console.log('Connected to the MUD server');
     client.write(`connect ${BOT_NAME} ${BOT_PASSWORD}\n`);
-    console.log(`Logged in as ${BOT_NAME}.`);
+    reconnectAttempts = 0;
   });
 
-  client.on('data', (data) => {
-    const message = data.toString();
-    console.log('<-', message); // Log incoming messages
-    handleMessage(client, message);
+  client.on('data', async (data) => {
+    try {
+      const message = data.toString().trim();
+      console.log('Received:', message);
+      await handleMessage(client, message);
+    } catch (error) {
+      logError(error, 'Message Handling');
+    }
   });
 
   client.on('close', () => {
-    console.log('Connection to MUD closed. Reconnecting in 5 seconds...');
-    setTimeout(startBot, 5000);
+    console.log('Connection closed');
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      console.log(
+        `Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`
+      );
+      setTimeout(connect, RECONNECT_DELAY);
+    } else {
+      logError(new Error('Max reconnection attempts reached'), 'Connection');
+      console.error('Max reconnection attempts reached. Exiting...');
+      process.exit(1);
+    }
   });
 
   client.on('error', (err) => {
-    console.error('MUD client error:', err);
-    client.destroy(); // Close socket on error
+    logError(err, 'Socket Error');
+    console.error('Error:', err);
   });
 }
 
-console.log('Starting MUD Chat Bot...');
-startBot();
+// Read user input from the console (for testing)
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+rl.on('line', (input) => {
+  if (client && !client.destroyed) {
+    client.write(input + '\n');
+  }
+});
+
+rl.prompt();
+connect();

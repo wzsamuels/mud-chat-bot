@@ -1,7 +1,8 @@
 import * as ai from './ai.js';
 import * as commands from './commands.js';
-import { sendReply } from './utils.js';
-import { combinedPattern } from './messagePatterns.js';
+import { sendReply, logMessage } from './utils.js';
+import { messageTypes } from './messagePatterns.js';
+import { BOT_NAME } from './config.js';
 
 async function processChatMessage(client, userMessage, userName, replyOptions) {
   if (userMessage.startsWith('@')) {
@@ -39,28 +40,20 @@ async function handleRecap(client, message) {
 }
 
 async function handleNormalMessage(client, message) {
-  const match = message.match(combinedPattern);
+  for (const type of messageTypes) {
+    const match = message.trim().match(type.pattern);
+    if (match) {
+      const { userName, userMessage, replyOptions } = type.handler(match.groups);
 
-  if (match) {
-    const groups = match.groups;
-    let userName, userMessage, replyOptions;
-
-    if (groups.channelName) {
-      userName = groups.userNameChannel;
-      userMessage = groups.userMessageChannel;
-      replyOptions = { channelName: groups.channelName, whisper: false };
-    } else if (groups.userNameDirect) {
-      userName = groups.userNameDirect;
-      userMessage = groups.userMessageDirect;
-      replyOptions = { whisper: false };
-    } else if (groups.userNameWhisper) {
-      userName = groups.userNameWhisper;
-      userMessage = groups.userMessageWhisper;
-      replyOptions = { whisper: true };
-    }
-
-    if (userName && userMessage) {
-      await processChatMessage(client, userMessage, userName, replyOptions);
+      if (userName && userMessage) {
+        // Bug Fix: Prevent the bot from replying to its own messages.
+        if (userName.toLowerCase() === BOT_NAME.toLowerCase() || userName.toLowerCase() === 'you') {
+          return; // Ignore messages from self.
+        }
+        logMessage(`${userName} to BOT: ${userMessage.replace(/\n/g, ' ')}`);
+        await processChatMessage(client, userMessage, userName, replyOptions);
+      }
+      return; // Message handled, no need to check other patterns.
     }
   }
 }

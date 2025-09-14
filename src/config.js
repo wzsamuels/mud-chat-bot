@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { logError } from './utils.js';
 
-const requiredEnvVars = ['BOT_NAME', 'BOT_PASSWORD', 'HOST', 'PORT', 'OPENAI_API_KEY'];
+const requiredEnvVars = ['BOT_NAME', 'BOT_PASSWORD', 'MUD_HOST', 'MUD_PORT', 'API_KEY'];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     const error = new Error(`Missing required environment variable: ${envVar}`);
@@ -20,9 +20,9 @@ const MAX_PROMPT_HISTORY_LENGTH = 10;
 
 export const BOT_NAME = process.env.BOT_NAME;
 export const BOT_PASSWORD = process.env.BOT_PASSWORD;
-export const HOST = process.env.HOST;
-export const PORT = process.env.PORT;
-export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+export const MUD_HOST = process.env.MUD_HOST;
+export const MUD_PORT = process.env.MUD_PORT;
+export const API_KEY = process.env.API_KEY;
 export const DEFAULT_TEMP = 0.7;
 
 export {
