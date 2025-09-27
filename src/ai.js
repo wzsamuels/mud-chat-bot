@@ -29,6 +29,10 @@ function loadPrompt() {
 
 function savePrompt() {
   try {
+    const dir = path.dirname(PROMPT_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     fs.writeFileSync(PROMPT_FILE_PATH, systemPromptBase, 'utf8');
   } catch (error) {
     logError(error, 'Error saving prompt');
