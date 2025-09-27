@@ -15,31 +15,39 @@ let currentMood = '';
 let temperature = DEFAULT_TEMP
 let maxTokens = 250;
 
-const PROMPT_FILE_PATH = path.join(process.cwd(), 'data', 'prompt.txt');
+const SETTINGS_FILE_PATH = path.join(process.cwd(), 'data', 'settings.json');
 
-function loadPrompt() {
+function loadSettings() {
   try {
-    if (fs.existsSync(PROMPT_FILE_PATH)) {
-      systemPromptBase = fs.readFileSync(PROMPT_FILE_PATH, 'utf8');
+    if (fs.existsSync(SETTINGS_FILE_PATH)) {
+      const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE_PATH, 'utf8'));
+      systemPromptBase = settings.systemPromptBase || PUNK_PROMPT;
+      currentMood = settings.currentMood || '';
+      temperature = settings.temperature || DEFAULT_TEMP;
     }
   } catch (error) {
-    logError(error, 'Error loading prompt');
+    logError(error, 'Error loading settings');
   }
 }
 
-function savePrompt() {
+function saveSettings() {
   try {
-    const dir = path.dirname(PROMPT_FILE_PATH);
+    const dir = path.dirname(SETTINGS_FILE_PATH);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(PROMPT_FILE_PATH, systemPromptBase, 'utf8');
+    const settings = {
+      systemPromptBase,
+      currentMood,
+      temperature,
+    };
+    fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), 'utf8');
   } catch (error) {
-    logError(error, 'Error saving prompt');
+    logError(error, 'Error saving settings');
   }
 }
 
-loadPrompt();
+loadSettings();
 
 async function createChatCompletion(messages, errorContext) {
   try {
@@ -106,6 +114,7 @@ export async function generateRecapOpinion(recapText) {
 
 export function setMood(mood) {
   currentMood = mood;
+  saveSettings();
 }
 
 export function clearChatHistory() {
@@ -130,7 +139,7 @@ export function setSystemPrompt(prompt) {
     promptHistory.shift();
   }
   systemPromptBase = prompt;
-  savePrompt();
+  saveSettings();
 }
 
 export function getSystemPrompt() {
@@ -139,6 +148,7 @@ export function getSystemPrompt() {
 
 export function setTemperature(newTemperature) {
   temperature = newTemperature;
+  saveSettings();
 }
 
 export function getTemperature() {
