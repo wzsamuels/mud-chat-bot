@@ -87,6 +87,9 @@ const commands = {
     }
     sendReply(client, userName, `System prompt set.`, { channelName, whisper });
   },
+  setprompt: (client, userName, args, { channelName, whisper }) => {
+    commands.prompt(client, userName, args, { channelName, whisper });
+  },
   help: (client, userName) => {
     sendReply(
       client,
@@ -109,7 +112,7 @@ const commands = {
     sendReply(
       client,
       userName,
-      `@prompt [prompt] - Set's ChatBot's system prompt to [prompt].`,
+      `@prompt [prompt] / @setprompt [prompt] - Set's ChatBot's system prompt to [prompt].`,
       { whisper: true }
     );
     sendReply(

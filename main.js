@@ -54,17 +54,19 @@ function connect() {
   });
 }
 
-// Read user input from the console (for testing)
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+if (process.env.TEST_MODE === 'true') {
+  // Read user input from the console (for testing)
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-rl.on('line', (input) => {
-  if (client && !client.destroyed) {
-    client.write(input + '\n');
-  }
-});
+  rl.on('line', (input) => {
+    if (client && !client.destroyed) {
+      client.write(input + '\n');
+    }
+  });
 
-rl.prompt();
+  rl.prompt();
+}
 connect();

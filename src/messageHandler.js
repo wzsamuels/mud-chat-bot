@@ -47,7 +47,7 @@ async function handleNormalMessage(client, message) {
 
       if (userName && userMessage) {
         // Bug Fix: Prevent the bot from replying to its own messages.
-        if (userName.toLowerCase() === BOT_NAME.toLowerCase() || userName.toLowerCase() === 'you') {
+        if (userName.toLowerCase().includes(BOT_NAME.toLowerCase()) || userName.toLowerCase() === 'you') {
           return; // Ignore messages from self.
         }
         logMessage(`${userName} to BOT: ${userMessage.replace(/\n/g, ' ')}`);

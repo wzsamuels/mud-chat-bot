@@ -1,4 +1,6 @@
 import { OpenAI } from 'openai';
+import fs from 'fs';
+import path from 'path';
 import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, API_KEY, DEFAULT_TEMP, AI_MODEL } from './config.js';
 import { logError } from './utils.js';
 
@@ -12,6 +14,28 @@ let systemPromptBase = PUNK_PROMPT;
 let currentMood = '';
 let temperature = DEFAULT_TEMP
 let maxTokens = 250;
+
+const PROMPT_FILE_PATH = path.join(process.cwd(), 'data', 'prompt.txt');
+
+function loadPrompt() {
+  try {
+    if (fs.existsSync(PROMPT_FILE_PATH)) {
+      systemPromptBase = fs.readFileSync(PROMPT_FILE_PATH, 'utf8');
+    }
+  } catch (error) {
+    logError(error, 'Error loading prompt');
+  }
+}
+
+function savePrompt() {
+  try {
+    fs.writeFileSync(PROMPT_FILE_PATH, systemPromptBase, 'utf8');
+  } catch (error) {
+    logError(error, 'Error saving prompt');
+  }
+}
+
+loadPrompt();
 
 async function createChatCompletion(messages, errorContext) {
   try {
@@ -102,6 +126,7 @@ export function setSystemPrompt(prompt) {
     promptHistory.shift();
   }
   systemPromptBase = prompt;
+  savePrompt();
 }
 
 export function getSystemPrompt() {
