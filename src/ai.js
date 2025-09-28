@@ -57,7 +57,7 @@ async function createChatCompletion(messages, errorContext) {
       max_tokens: maxTokens,
       temperature: temperature,
     });
-    return completion.choices[0].message.content.trim();
+    return completion.choices[0].message.content.trim().replace(/(\r\n|\n|\r)/gm, " ");
   } catch (error) {
     logError(error, errorContext);
     return null;
