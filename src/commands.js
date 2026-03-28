@@ -27,6 +27,7 @@ const commands = {
       { channelName }
     );
   },
+
   clearhistory: (client, userName, args, { channelName, whisper }) => {
     ai.clearChatHistory();
     sendReply(client, userName, `Chat history cleared.`, {
@@ -34,6 +35,7 @@ const commands = {
       whisper,
     });
   },
+
   status: (client, userName, args, { channelName, whisper }) => {
     sendReply(client, userName, `Current mood: ${ai.getMood()}`, {
       channelName,

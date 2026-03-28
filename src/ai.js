@@ -1,12 +1,10 @@
-import { OpenAI } from 'openai';
 import fs from 'fs';
 import path from 'path';
-import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, API_KEY, DEFAULT_TEMP, AI_MODEL } from './config.js';
+import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, DEFAULT_TEMP, AI_MODEL } from './config.js';
 import { logError } from './utils.js';
+import { GoogleGenAI } from "@google/genai";
 
-const openai = new OpenAI({
-  apiKey: API_KEY,
-});
+const ai = new GoogleGenAI({});
 
 let chatHistory = [];
 let promptHistory = [];
@@ -51,13 +49,28 @@ loadSettings();
 
 async function createChatCompletion(messages, errorContext) {
   try {
-    const completion = await openai.chat.completions.create({
+    let systemInstruction = "";
+    const contents = [];
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemInstruction = msg.content;
+      } else {
+        contents.push({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }],
+        });
+      }
+    }
+
+    const response = await ai.models.generateContent({
       model: AI_MODEL,
-      messages,
-      max_tokens: maxTokens,
-      temperature: temperature,
+      contents,
+      config: {
+        systemInstruction,
+        temperature
+      },
     });
-    return completion.choices[0].message.content.trim().replace(/(\r\n|\n|\r)/gm, " ");
+    return response.text.trim().replace(/(\r\n|\n|\r)/gm, " ");
   } catch (error) {
     logError(error, errorContext);
     return null;
