@@ -24,15 +24,16 @@ export function logMessage(message) {
   fs.appendFileSync(CHAT_LOG_FILE, logEntry);
 }
 
-export function sendReply(client, userName, text, {channelName = null, whisper = false}) {
+export function formatReply(text, {userName, channelName = null, whisper = false}) {
   let messageToSend;
+
   if(whisper) {
     messageToSend = `.${userName} ${text}\n`;
   } else if (channelName) {
     messageToSend = `#${channelName} ..${userName} ${text}\n`;
   } else {
     messageToSend = `..${userName} ${text}\n`;
-  }
-  logMessage(`BOT to ${userName}: ${text.replace(/\n/g, ' ')}`);
-  client.write(messageToSend);
+  } 
+
+  return messageToSend
 }

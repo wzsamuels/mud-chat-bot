@@ -7,12 +7,14 @@ import {
   MUD_PORT,
 } from './src/config.js';
 import { handleMessage } from './src/messageHandler.js';
-import { logError } from './src/utils.js';
+import { logError, logMessage } from './src/utils.js';
 
 let client;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 seconds
+
+const chatBot = new Chatbot()
 
 function connect() {
   client = new net.Socket();
@@ -21,13 +23,18 @@ function connect() {
     console.log('Connected to the MUD server');
     client.write(`connect ${BOT_NAME} ${BOT_PASSWORD}\n`);
     reconnectAttempts = 0;
+
+    chatBot.loadSettings();
   });
 
   client.on('data', async (data) => {
     try {
       const message = data.toString().trim();
-      console.log('Received:', message);
-      await handleMessage(client, message);
+      logMessage(`Received: ${message}`);
+      const response = await chatBot.handleMessage(message);
+      logMessage(`Response: ${response}`)
+
+      client.write(response)
     } catch (error) {
       logError(error, 'Message Handling');
     }

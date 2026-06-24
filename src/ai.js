@@ -4,48 +4,157 @@ import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, DEFAULT_TEMP, AI_MODEL } from './
 import { logError } from './utils.js';
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({});
-
-let chatHistory = [];
-let promptHistory = [];
-let systemPromptBase = PUNK_PROMPT;
-let currentMood = '';
-let temperature = DEFAULT_TEMP
-let maxTokens = 250;
-
+import { messageTypes } from './messagePatterns.js';
 const SETTINGS_FILE_PATH = path.join(process.cwd(), 'data', 'settings.json');
+const MAX_TOKENS = 250
 
-function loadSettings() {
-  try {
-    if (fs.existsSync(SETTINGS_FILE_PATH)) {
-      const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE_PATH, 'utf8'));
-      systemPromptBase = settings.systemPromptBase || PUNK_PROMPT;
-      currentMood = settings.currentMood || '';
-      temperature = settings.temperature || DEFAULT_TEMP;
-    }
-  } catch (error) {
-    logError(error, 'Error loading settings');
+export class ChatBot {
+  #ai = new GoogleGenAI({});
+  #chatHistory = [];
+  #promptHistory = [];
+
+  systemPrompt = PUNK_PROMPT;
+  temperature = DEFAULT_TEMP
+
+  #markovCorpus = ''
+  #markovMode = false
+
+  get chatHistory() {
+    return[...this.#chatHistory]
   }
-}
 
-function saveSettings() {
-  try {
-    const dir = path.dirname(SETTINGS_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    const settings = {
-      systemPromptBase,
-      currentMood,
-      temperature,
-    };
-    fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), 'utf8');
-  } catch (error) {
-    logError(error, 'Error saving settings');
+  get promptHistory() {
+    return[...this.#promptHistory]
   }
-}
 
-loadSettings();
+
+  loadSettings() {
+    try {
+      if (fs.existsSync(SETTINGS_FILE_PATH)) {
+        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE_PATH, 'utf8'));
+        this.systemPrompt = settings.systemPrompt || PUNK_PROMPT;
+        this.temperature = settings.temperature || DEFAULT_TEMP;
+        this.markovMode = settings.markovMode || false;
+      }
+    } catch (error) {
+      logError(error, 'Error loading settings');
+    }
+  }
+
+  saveSettings() {
+    try {
+      const dir = path.dirname(SETTINGS_FILE_PATH);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const settings = {
+        this.systemPrompt,
+        this.temperature,
+        this.markovMode
+      };
+      fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), 'utf8');
+    } catch (error) {
+      logError(error, 'Error saving settings');
+    }
+  }
+
+  updatePrompt(newPrompt) {
+    if (!newPrompt || typeof newPrompt !== 'string') {
+      return {message: `Invalid prompt, idiot.`}
+    }
+
+    this.#promptHistory.push(newPrompt);
+    if (this.#promptHistory.length >= MAX_CHAT_HISTORY_LENGTH) {
+      this.#promptHistory.shift();
+    }
+    this.#prompt = newPrompt;
+    this.saveSettings();
+    return {success: true, message: `Prompt updated.`}
+  }
+
+  updateTemperature(newTemp) {
+    const temp = parseFloat(newTemp);
+    if (isNaN(temp) || temp < 0.0 || temp > 2.0) {
+      return {success: false, message: `Invalid temperature: ${temp}. Please provide a number between 0.0 and 2.0.`}
+    }
+    this.#temperature = temp
+    this.saveSettings()
+    return {success: true, message: `Temperature updated: ${temp}.`}
+  }
+
+  updateMarkovMode(newMarkovMode) {
+if (typeof value === 'boolean') return value;
+  
+  // Handle strings
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+  }
+    if (isTrue(newMarkovMode)) {
+      
+    }
+  }
+
+  async handleMessage(message) {
+    // Process message based on type (direct, whisper, channel)
+    for (const type of messageTypes) {
+      const match = message.trim().match(type.pattern);
+      
+      if (match) {
+        const { userName, userMessage, replyOptions } = type.handler(match.groups);
+
+        if (userName && userMessage) {
+          // Bug Fix: Prevent the bot from replying to its own messages.
+          if (userName.toLowerCase().includes(BOT_NAME.toLowerCase()) || userName.toLowerCase() === 'you') {
+            return; // Ignore messages from self.
+          }
+          if (userMessage.startsWith('@')) {
+            const commandRegex = /^@(\w+)(?:\s+(.*))?/;
+            const match = userMessage.match(commandRegex);
+            if (!match) {
+              return formatReply(userName, "I couldn't parse that command.", {
+                channelName: channelName,
+                whisper: whisper,
+              });
+              return;
+            }
+            const cmd = match[1].toLowerCase();
+            const args = match[2] ? match[2].trim() : '';
+
+            if (whisper && cmd !== 'help' && cmd !== 'status') {
+              return formatReply("Sorry, you can't whisper that command.",
+                {channelName, userName, whisper});
+            }
+
+            const command = commands[cmd];
+            if (command[cmd]) {
+              command(userName, args, { whisper, channelName });
+            } else {
+              return formatReply(userName, `Unknown command: @${cmd}`, {
+                channelName: channelName,
+              });
+            }
+          }
+
+          const response = await ai.generateAIResponse(userMessage);
+          if (response) {
+            sendReply(userName, response, replyOptions);
+          } else {
+            sendReply(userName, "Oops, something went wrong with my AI", replyOptions);
+          }
+        }
+        return; // Message handled, no need to check other patterns.
+      }
+    }
+
+    // If no message type was matched, something went wrong 
+    logError(new Error('Unrecognized message type'), message)
+    return `Somehow you sent me a message that wasn't a recognized type. Logging error, idiot.`
+  }
+};
+
+
 
 async function createChatCompletion(messages, errorContext) {
   try {
@@ -104,59 +213,7 @@ export async function generateAIResponse(userMessage) {
   return aiMessage;
 }
 
-export async function generateRecapOpinion(recapText) {
-  let systemPrompt =
-    systemPromptBase +
-    'You will receive a channel recap from another user. Summarize the discussion and give your snarky opinion in two to three sentences maximum.';
-  if (currentMood) {
-    systemPrompt += `\nYour current mood is ${currentMood}`;
-  }
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    {
-      role: 'user',
-      content: `Here is the channel recap:\n\n${recapText}\n\nPlease summarize or give an opinion.`,
-    },
-  ];
-  const aiMessage = await createChatCompletion(
-    messages,
-    'Recap Opinion Generation'
-  );
-  return aiMessage || '(Unable to generate recap opinion at this time.)';
-}
-
-export function setMood(mood) {
-  currentMood = mood;
-  saveSettings();
-}
-
-export function clearChatHistory() {
-  chatHistory = [];
-}
-
-export function clearPromptHistory() {
-  promptHistory = [];
-}
-
-export function getMood() {
-  return currentMood;
-}
-
-export function getPromptHistory() {
-  return promptHistory;
-}
-
 export function setSystemPrompt(prompt) {
-  promptHistory.push(systemPromptBase);
-  if (promptHistory.length >= MAX_CHAT_HISTORY_LENGTH) {
-    promptHistory.shift();
-  }
-  systemPromptBase = prompt;
-  saveSettings();
-}
-
-export function getSystemPrompt() {
-  return systemPromptBase;
 }
 
 export function setTemperature(newTemperature) {
@@ -164,6 +221,4 @@ export function setTemperature(newTemperature) {
   saveSettings();
 }
 
-export function getTemperature() {
-  return temperature;
-}
+const isTrue = (value) => /^true$/i.test(value);
