@@ -13,7 +13,7 @@ export class ChatBot {
   #chatHistory = [];
   #promptHistory = [];
 
-  systemPrompt = PUNK_PROMPT;
+  prompt = PUNK_PROMPT;
   temperature = DEFAULT_TEMP
 
   #markovCorpus = ''
@@ -32,7 +32,7 @@ export class ChatBot {
     try {
       if (fs.existsSync(SETTINGS_FILE_PATH)) {
         const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE_PATH, 'utf8'));
-        this.systemPrompt = settings.systemPrompt || PUNK_PROMPT;
+        this.prompt = settings.prompt || PUNK_PROMPT;
         this.temperature = settings.temperature || DEFAULT_TEMP;
         this.markovMode = settings.markovMode || false;
       }
@@ -48,9 +48,9 @@ export class ChatBot {
         fs.mkdirSync(dir, { recursive: true });
       }
       const settings = {
-        this.systemPrompt,
-        this.temperature,
-        this.markovMode
+        prompt: this.prompt,
+        temperature: this.temperature,
+        markovMode: this.markovMode
       };
       fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(settings, null, 2), 'utf8');
     } catch (error) {
@@ -60,7 +60,7 @@ export class ChatBot {
 
   updatePrompt(newPrompt) {
     if (!newPrompt || typeof newPrompt !== 'string') {
-      return {message: `Invalid prompt, idiot.`}
+      return { success: false, message: `Invalid prompt, idiot.`}
     }
 
     this.#promptHistory.push(newPrompt);
@@ -82,17 +82,19 @@ export class ChatBot {
     return {success: true, message: `Temperature updated: ${temp}.`}
   }
 
-  updateMarkovMode(newMarkovMode) {
-if (typeof value === 'boolean') return value;
-  
-  // Handle strings
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'true') return true;
-    if (normalized === 'false') return false;
-  }
-    if (isTrue(newMarkovMode)) {
+  updateMarkovMode(value) {
+    const newMode = value?.toLowerCase().trim();
+
+    if (!newMode || newMode !== 'on' || newMode !== 'off') {
+      return { success: false, message: `This command requires an argument of either "on" or "off".`}
+    }
       
+    if (newMode === 'on') {
+      this.#markovMode = true;
+      return { success: true, message: `Markov mode enabled.`}
+    } else {
+      this.#markovMode = false;
+      return { success: true, message: `Markov mode disabled.`}
     }
   }
 
@@ -104,48 +106,70 @@ if (typeof value === 'boolean') return value;
       if (match) {
         const { userName, userMessage, replyOptions } = type.handler(match.groups);
 
-        if (userName && userMessage) {
-          // Bug Fix: Prevent the bot from replying to its own messages.
-          if (userName.toLowerCase().includes(BOT_NAME.toLowerCase()) || userName.toLowerCase() === 'you') {
-            return; // Ignore messages from self.
+        if (!userName || !userMessage) {
+          return ["Somehow you sent me a message that didn't have a user or text. How the hell did you do that?"]
+        }
+
+        // Bug Fix: Prevent the bot from replying to its own messages.
+        if (userName.toLowerCase().includes(BOT_NAME.toLowerCase()) || userName.toLowerCase() === 'you') {
+          return ["I can't respond to myself, idiot."]
+        }
+
+        if (userMessage.startsWith('@')) {
+          const commandRegex = /^@(\w+)(?:\s+(.*))?/;
+          const match = userMessage.match(commandRegex);
+          if (!match) {
+            return [formatReply("I couldn't parse that command.", {
+              userName, channelName, whisper
+            })];
           }
-          if (userMessage.startsWith('@')) {
-            const commandRegex = /^@(\w+)(?:\s+(.*))?/;
-            const match = userMessage.match(commandRegex);
-            if (!match) {
-              return formatReply(userName, "I couldn't parse that command.", {
-                channelName: channelName,
-                whisper: whisper,
-              });
-              return;
-            }
-            const cmd = match[1].toLowerCase();
-            const args = match[2] ? match[2].trim() : '';
+          const cmd = match[1].toLowerCase();
+          const args = match[2] ? match[2].trim() : '';
 
-            if (whisper && cmd !== 'help' && cmd !== 'status') {
-              return formatReply("Sorry, you can't whisper that command.",
-                {channelName, userName, whisper});
-            }
-
-            const command = commands[cmd];
-            if (command[cmd]) {
-              command(userName, args, { whisper, channelName });
-            } else {
-              return formatReply(userName, `Unknown command: @${cmd}`, {
-                channelName: channelName,
-              });
-            }
+          if (whisper && cmd !== 'help' && cmd !== 'status') {
+            return [formatReply("Sorry, you can't whisper that command.",
+              {channelName, userName, whisper})];
           }
 
-          const response = await ai.generateAIResponse(userMessage);
-          if (response) {
-            sendReply(userName, response, replyOptions);
+          const command = commands[cmd];
+          if (command[cmd]) {
+            return [command(userName, args, { whisper, channelName })];
           } else {
-            sendReply(userName, "Oops, something went wrong with my AI", replyOptions);
+            return [formatReply(`Unknown command: @${cmd}`, {
+              userName, channelName, whisper
+            })];
           }
         }
-        return; // Message handled, no need to check other patterns.
+  
+        chatHistory.push({ role: 'user', content: userMessage });
+        let systemPrompt =
+          this.prompt +
+          "Keep your answers to a maximum of three sentences unless prompted otherwise.";
+
+
+        const messagesToSend = [
+          { role: 'system', content: systemPrompt },
+          ...chatHistory,
+        ];
+        const aiMessage = await createChatCompletion(
+          messagesToSend,
+          'AI Response Generation'
+        );
+        if (aiMessage) {
+          chatHistory.push({ role: 'assistant', content: aiMessage });
+          while (chatHistory.length > MAX_CHAT_HISTORY_LENGTH) {
+            chatHistory.shift();
+          }
+        }
+
+        const response = await ai.generateAIResponse(userMessage);
+        if (response) {
+          sendReply(userName, response, replyOptions);
+        } else {
+          sendReply(userName, "Oops, something went wrong with my AI", replyOptions);
+        }
       }
+      return; // Message handled, no need to check other patterns.
     }
 
     // If no message type was matched, something went wrong 
@@ -188,37 +212,6 @@ async function createChatCompletion(messages, errorContext) {
 
 console.log(AI_MODEL)
 
-export async function generateAIResponse(userMessage) {
-  chatHistory.push({ role: 'user', content: userMessage });
-  let systemPrompt =
-    systemPromptBase +
-    "Keep your answers to a maximum of three sentences unless prompted otherwise.";
-  if (currentMood) {
-    systemPrompt += `\nYour current mood is ${currentMood}`;
-  }
-  while (chatHistory.length > MAX_CHAT_HISTORY_LENGTH) {
-    chatHistory.shift();
-  }
-  const messagesToSend = [
-    { role: 'system', content: systemPrompt },
-    ...chatHistory,
-  ];
-  const aiMessage = await createChatCompletion(
-    messagesToSend,
-    'AI Response Generation'
-  );
-  if (aiMessage) {
-    chatHistory.push({ role: 'assistant', content: aiMessage });
-  }
-  return aiMessage;
-}
 
-export function setSystemPrompt(prompt) {
-}
-
-export function setTemperature(newTemperature) {
-  temperature = newTemperature;
-  saveSettings();
-}
 
 const isTrue = (value) => /^true$/i.test(value);
