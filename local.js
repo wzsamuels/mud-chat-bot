@@ -1,6 +1,6 @@
 require('dotenv').config();
 const readline = require('readline');
-const { Configuration, OpenAIApi, OpenAI } = require('openai');
+
 
 // OpenAI API setup
 const openai = new OpenAI({

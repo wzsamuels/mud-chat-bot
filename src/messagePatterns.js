@@ -26,27 +26,28 @@ export const messageTypes = [
     name: 'channel',
     pattern: channelPattern,
     handler: (groups) => ({
-      userName: groups.userName,
       userMessage: groups.userMessage,
-      replyOptions: { channelName: groups.channelName, whisper: false }
+      userName: groups.userName,
+      channelName: groups.channelName,
+      whisper: false
     })
   },
   {
     name: 'direct',
     pattern: directPattern,
     handler: (groups) => ({
-      userName: groups.userName,
       userMessage: groups.userMessage,
-      replyOptions: { whisper: false }
+      userName: groups.userName,
+      whisper: false
     })
   },
   {
     name: 'whisper',
     pattern: whisperPattern,
     handler: (groups) => ({
-      userName: groups.userName,
       userMessage: groups.userMessage,
-      replyOptions: { whisper: true }
+      userName: groups.userName,
+      whisper: true
     })
   }
 ];

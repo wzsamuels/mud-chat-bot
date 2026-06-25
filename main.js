@@ -7,14 +7,15 @@ import {
   MUD_PORT,
 } from './src/config.js';
 import { handleMessage } from './src/messageHandler.js';
-import { logError, logMessage } from './src/utils.js';
+import { formatReply, logError, logMessage } from './src/utils.js';
+import { messageTypes } from './messagePatterns.js';
 
 let client;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 seconds
 
-const chatBot = new Chatbot()
+const bot = new Bot()
 
 function connect() {
   client = new net.Socket();
@@ -23,18 +24,41 @@ function connect() {
     console.log('Connected to the MUD server');
     client.write(`connect ${BOT_NAME} ${BOT_PASSWORD}\n`);
     reconnectAttempts = 0;
-
-    chatBot.loadSettings();
   });
 
   client.on('data', async (data) => {
     try {
       const message = data.toString().trim();
-      logMessage(`Received: ${message}`);
-      const response = await chatBot.handleMessage(message);
-      logMessage(`Response: ${response}`)
+      logMessage(`[RECEIVED]: ${message}`);
+      let reply;
+      for (const type of messageTypes) {
+        const match = message.trim().match(type.pattern);
+        
+        if (match) {
+          const { userName, userMessage, whisper = null, channelName = null } = type.handler(match.groups);
+  
+          if (!userName || !userMessage) {
+            reply = ["Somehow you sent me a message that didn't have a user or text. How the hell did you do that?"];
+            break;
+          }
+  
+          // Bug Fix: Prevent the bot from replying to its own messages.
+          if (userName.toLowerCase().includes(BOT_NAME.toLowerCase()) || userName.toLowerCase() === 'you') {
+            replay = ["I can't respond to myself, idiot."];
+            break;
+          }
 
-      client.write(response)
+          const reply = await bot.generateReply(message);
+          break;
+        }
+      }
+
+      for (line of reply) {
+        formattedLine = formatReply(line, {userName, channelName, whisper})
+        logMessage(`[REPLY]: ${formattedLine}`)
+        client.write(formattedLine)
+      }
+
     } catch (error) {
       logError(error, 'Message Handling');
     }
