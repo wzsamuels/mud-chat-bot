@@ -6,7 +6,7 @@ import {
   MUD_HOST,
   MUD_PORT,
 } from './src/config.js';
-import { handleMessage } from './src/messageHandler.js';
+
 import { formatReply, logError, logMessage } from './src/utils.js';
 import { messageTypes } from './messagePatterns.js';
 
