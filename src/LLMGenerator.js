@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenAI } from "@google/genai";
-import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, DEFAULT_TEMP, AI_MODEL } from './config.js';
+import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, MAX_PROMPT_HISTORY_LENGTH, DEFAULT_TEMP, AI_MODEL } from './config.js';
 import { logError } from './utils.js';
 
 
@@ -18,6 +18,7 @@ export class LLMGenerator {
 
   constructor() {
     this.#ai = new GoogleGenAI({});
+    this.#loadSettings();
   }
 
   clearChatHistory() {
@@ -119,10 +120,12 @@ export class LLMGenerator {
       return { success: false, message: `Invalid prompt, idiot.`}
     }
 
-    this.#promptHistory.push(newPrompt);
-    if (this.#promptHistory.length >= MAX_CHAT_HISTORY_LENGTH) {
+    this.#promptHistory.push(this.prompt);
+    
+    if (this.#promptHistory.length >= MAX_PROMPT_HISTORY_LENGTH) {
       this.#promptHistory.shift();
     }
+    
     this.prompt = newPrompt;
     this.#saveSettings();
     return {success: true, message: `Prompt updated.`}

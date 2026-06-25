@@ -15,6 +15,7 @@ const commands = {
     let reply = [
       `Current temperature: ${bot.getTemperature()}`,
       `Current prompt: ${bot.getPrompt()}`,
+      `Markov Mode: ${bot.getMarkovMode()}`
     ]
     const promptHistory = bot.getPromptHistory();
     if (promptHistory.length > 0) {
@@ -51,14 +52,15 @@ const commands = {
 
   help: (args, bot) => {
     let reply = [ 
-      "ChatBot has some commands to extend it's functionality. Only @help and @status commands can be whispered.",
+      "ChatBot has some commands to extend it's functionality.",
       "@prompt [prompt] - Set's ChatBot's system prompt to [prompt].",
       "The are also some built-in prompts: 'anime', 'snarky', 'punk', and 'smart'. 'Punk' is the default prompt.",
       "@temp [value] - Sets the temperature for AI responses (0.0 to 2.0).",
       "@clearhistory - Clears ChatBot's recent chat history.",
-      "@markov [on/off] - Enables or disables the Markov chain response generator.",
-      "@status - Shows ChatBot's current mood, system prompt, and recent prompt history."
+      "@markov [on/off] - Enables or disables the Markov chain response generator. ChatBot's prompt has no effect in Markov mode.",
+      "@status - Shows ChatBot's current prompt, temperature, and recent prompt history."
     ];
+    console.log(reply)
     return reply;
   },
 

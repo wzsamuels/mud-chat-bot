@@ -26,6 +26,10 @@ export class Bot {
     return this.#llm.temperature;
   }
 
+  getMarkovMode() {
+    return this.#activeGenerator == this.#llm ? 'off' : 'on';
+  }
+
   getPrompt() {
     return this.#llm.prompt;
   }
@@ -69,7 +73,7 @@ export class Bot {
     const command = commands[cmd];
     console.log(command)
     if (commands[cmd]) {
-      return [command(args, this)];
+      return command(args, this);
     } else {
       return [`Unknown command: @${cmd}`];
     }
