@@ -104,7 +104,7 @@ class MarkovGenerator {
 
     // 3. Absolute Fallback: Pivot gracefully and pick a random start
     if (!seedState) {
-      return this.generate(maxWords);
+      return [this.generate(maxWords)];
     }
 
     // 4. Generate the response starting from the found seed state
