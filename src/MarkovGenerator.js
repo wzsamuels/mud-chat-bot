@@ -2,8 +2,9 @@
 import fs from 'fs'
 import path from 'path'
 
-const TEXT1_FILE_PATH = path.join(process.cwd(), 'data', 'nuclear.txt');
+const TEXT1_FILE_PATH = path.join(process.cwd(), 'data', 'pride.txt');
 const TEXT2_FILE_PATH = path.join(process.cwd(), 'data', 'alice.txt');
+const TEXT3_FILE_PATH = path.join(process.cwd(), 'data', 'madness.txt');
 
 class MarkovGenerator {
   #corpus = ''
@@ -188,11 +189,13 @@ class MarkovGenerator {
     // URLs for the plain text UTF-8 versions
     let text1
     let text2
+    let text3
 
     try {
-      if (fs.existsSync(TEXT1_FILE_PATH) && fs.existsSync(TEXT2_FILE_PATH)) {
+      if (fs.existsSync(TEXT1_FILE_PATH) && fs.existsSync(TEXT2_FILE_PATH) && fs.existsSync(TEXT3_FILE_PATH)) {
         text1 = this.#cleanGutenbergText(fs.readFileSync(TEXT1_FILE_PATH, 'utf8'));
         text2 = this.#cleanGutenbergText(fs.readFileSync(TEXT2_FILE_PATH, 'utf8'));
+        text3 = this.#cleanGutenbergText(fs.readFileSync(TEXT3_FILE_PATH, 'utf8'));
       }
     } catch (error) {
       logError(error, 'Error loading texts');
@@ -200,7 +203,7 @@ class MarkovGenerator {
 
     try {
         // Combine them into one massive string
-        const combinedCorpus = text1 + " " + text2;
+        const combinedCorpus = text1 + " " + text2 + " " + text3;
         console.log("Corpus ready! Total characters:", combinedCorpus.length);
         
         this.#train(combinedCorpus);
