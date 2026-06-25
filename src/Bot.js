@@ -4,6 +4,7 @@ import path from 'path';
 import { logError } from './utils.js';
 import MarkovGenerator from './MarkovGenerator.js'
 import { LLMGenerator } from './LLMGenerator.js';
+import commands from './commands.js';
 
 export class Bot {
   #llm;
@@ -43,6 +44,7 @@ export class Bot {
   
   async generateReply(text) {
     if (this.#isCommand(text)) {
+      console.log("Command detected")
       return this.#executeCommand(text);
     }
 
@@ -62,12 +64,11 @@ export class Bot {
     const cmd = match[1].toLowerCase();
     const args = match[2] ? match[2].trim() : '';
 
-    if (whisper && cmd !== 'help' && cmd !== 'status') {
-      return ["Sorry, you can't whisper that command."];
-    }
+    console.log(cmd, args)
 
     const command = commands[cmd];
-    if (command[cmd]) {
+    console.log(command)
+    if (commands[cmd]) {
       return [command(args, this)];
     } else {
       return [`Unknown command: @${cmd}`];
@@ -76,8 +77,9 @@ export class Bot {
 
   setMarkov(value) {
     const mode = value?.toLowerCase().trim();
+    console.log(mode)
 
-    if (!mode || mode !== 'on' || mode !== 'off') {
+    if (!mode || (mode !== 'on' && mode !== 'off')) {
       return { success: false, message: `This command requires an argument of either "on" or "off".`}
     }
       

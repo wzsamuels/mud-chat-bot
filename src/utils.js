@@ -28,6 +28,7 @@ export function formatReply(text, {userName, channelName = null, whisper = false
   let messageToSend;
 
   if(whisper) {
+    console.log("Whisper detected")
     messageToSend = `.${userName} ${text}\n`;
   } else if (channelName) {
     messageToSend = `#${channelName} ..${userName} ${text}\n`;

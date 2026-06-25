@@ -8,7 +8,8 @@ import {
 } from './src/config.js';
 
 import { formatReply, logError, logMessage } from './src/utils.js';
-import { messageTypes } from './messagePatterns.js';
+import { messageTypes } from './src/messagePatterns.js';
+import Bot from './src/Bot.js';
 
 let client;
 let reconnectAttempts = 0;
@@ -30,13 +31,15 @@ function connect() {
     try {
       const message = data.toString().trim();
       logMessage(`[RECEIVED]: ${message}`);
-      let reply;
+      console.log(message)
+      let reply = null;
+      let userName, userMessage, whisper, channelName;
       for (const type of messageTypes) {
         const match = message.trim().match(type.pattern);
         
         if (match) {
-          const { userName, userMessage, whisper = null, channelName = null } = type.handler(match.groups);
-  
+          const { userName, userMessage, whisper, channelName} = type.handler(match.groups);
+          console.log(userName, userMessage, whisper, channelName)
           if (!userName || !userMessage) {
             reply = ["Somehow you sent me a message that didn't have a user or text. How the hell did you do that?"];
             break;
@@ -44,19 +47,23 @@ function connect() {
   
           // Bug Fix: Prevent the bot from replying to its own messages.
           if (userName.toLowerCase().includes(BOT_NAME.toLowerCase()) || userName.toLowerCase() === 'you') {
-            replay = ["I can't respond to myself, idiot."];
+            reply = ["I can't respond to myself, idiot."];
             break;
           }
 
-          const reply = await bot.generateReply(message);
+          reply = await bot.generateReply(userMessage);
+          
+          for (const line of reply) {
+            console.log("Line: ", line)
+            const formattedLine = formatReply(line, {userName, channelName, whisper})
+            console.log(formattedLine)
+            logMessage(`[REPLY]: ${formattedLine}`)
+
+            client.write(formattedLine)
+          }
+
           break;
         }
-      }
-
-      for (line of reply) {
-        formattedLine = formatReply(line, {userName, channelName, whisper})
-        logMessage(`[REPLY]: ${formattedLine}`)
-        client.write(formattedLine)
       }
 
     } catch (error) {

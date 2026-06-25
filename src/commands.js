@@ -1,5 +1,4 @@
 import { ANIME_PROMPT, SNARKY_PROMPT, SMART_PROMPT, PUNK_PROMPT } from './config.js';
-import { sendReply } from './utils.js';
 
 const commands = {
   clearhistory: (args, bot) => {
@@ -68,3 +67,5 @@ const commands = {
     return [result.message];
   },
 };
+
+export default commands;
