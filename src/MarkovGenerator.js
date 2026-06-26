@@ -13,13 +13,15 @@ class MarkovGenerator {
   #startStates  = []
   #order
 
-  constructor (order = 1) {
+  constructor (order = 7) {
     this.#order = order;
     this.#buildCorpus()
   }
 
   #train(text) {
-    const words = text.trim().split(/\s+/);
+    // const words = text.trim().split(/\s+/);
+    const words = text.trim().split('');
+
 
     // Stop 2 words short of the end since we need pairs + 1 next word
     for (let i = 0; i < words.length - this.#order - 1; i++) {
