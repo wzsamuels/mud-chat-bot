@@ -71,6 +71,10 @@ class MarkovGenerator {
       stateArray.push(nextToken);
       currentState = stateArray.join(this.#separator);
 
+      if (['.', '?', '!'].includes(nextToken.slice(-1))) {
+         break;
+      }
+
     }
 
     return result.join(this.#separator``);
@@ -122,6 +126,10 @@ class MarkovGenerator {
       stateArray.shift();
       stateArray.push(nextToken);
       currentState = stateArray.join(this.#separator);
+
+      if (['.', '?', '!'].includes(nextToken.slice(-1))) {
+         break;
+      }
     }
 
     let finalResponse = result.join(this.#separator);
