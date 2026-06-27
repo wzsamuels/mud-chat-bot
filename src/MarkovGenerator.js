@@ -6,31 +6,45 @@ const TEXT1_FILE_PATH = path.join(process.cwd(), 'data', 'pride.txt');
 const TEXT2_FILE_PATH = path.join(process.cwd(), 'data', 'alice.txt');
 const TEXT3_FILE_PATH = path.join(process.cwd(), 'data', 'madness.txt');
 const TEXT4_FILE_PATH = path.join(process.cwd(), 'data', 'nuclear.txt');
+const MAX_ORDER = 8;
 
 class MarkovGenerator {
-  #corpus = ''
   #dictionary = {}
   #startStates  = []
   #order
   #mode
   #separator
 
-  constructor (order = 4, mode = 'char') {
-    this.#order = order;
+  constructor (order = 6, mode = 'char') {
+    this.#order = this.#sanitizeOrder(order);
     this.#mode = mode;
     this.#separator = mode === 'word' ? ' ' : '';
     this.#buildCorpus()
   }
 
   updateOrder(newOrder) {
-    if (isNaN(newOrder) || newOrder < 1) {
-      return { success: false, message: "Invalid order. Please provide a positive integer." };
+    const parsedOrder = Number(newOrder);
+
+    if (!Number.isInteger(parsedOrder) || parsedOrder < 1 || parsedOrder > MAX_ORDER) {
+      return { success: false, message: `Invalid order. Please provide a positive integer between 1 and ${MAX_ORDER}.` };
     }
-    this.#order = newOrder;
+
+    this.#order = parsedOrder;
     this.#dictionary = {};
     this.#startStates = [];
     this.#buildCorpus();
-    return { success: true, message: `Markov order updated to ${newOrder}.` };
+
+    return { success: true, message: `Markov order updated to ${parsedOrder}.` };
+  }
+
+  #sanitizeOrder(order) {
+    const parsedOrder = Number(order);
+
+    if (!Number.isInteger(parsedOrder) || parsedOrder < 1) {
+      return 6;
+    }
+
+    return Math.min(parsedOrder, MAX_ORDER);
   }
 
   #train(text) {
@@ -88,7 +102,7 @@ class MarkovGenerator {
 
     }
 
-    return result.join(this.#separator``);
+    return result.join(this.#separator);
   }
 
   generateReply(userPrompt, maxTokens = this.#mode === 'word' ? 30 : 200) {

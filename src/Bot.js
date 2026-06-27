@@ -12,11 +12,11 @@ export class Bot {
   #activeGenerator
   #config = { useLLM: true };
 
-  constructor() {
+  constructor(generator = 'llm') {
     this.#llm = new LLMGenerator();
     this.#markov = new MarkovGenerator();
-    this.#activeGenerator = this.#llm
-  }
+    this.#activeGenerator = generator === 'markov' ? this.#markov : this.#llm;
+  } 
 
   getPromptHistory() {
     return this.#llm.promptHistory;
