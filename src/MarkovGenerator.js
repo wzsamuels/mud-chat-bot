@@ -1,8 +1,9 @@
 // MarkovGenerator.js
 import fs from 'fs'
 import path from 'path'
+import {logError} from './utils.js'
 
-const TEXT1_FILE_PATH = path.join(process.cwd(), 'data', 'pride.txt');
+//const TEXT1_FILE_PATH = path.join(process.cwd(), 'data', 'pride.txt');
 const TEXT2_FILE_PATH = path.join(process.cwd(), 'data', 'alice.txt');
 const TEXT3_FILE_PATH = path.join(process.cwd(), 'data', 'madness.txt');
 const TEXT4_FILE_PATH = path.join(process.cwd(), 'data', 'nuclear.txt');
@@ -10,12 +11,13 @@ const MAX_ORDER = 8;
 
 class MarkovGenerator {
   #dictionary = {}
+  #reverseDict = {}
   #startStates  = []
   #order
   #mode
   #separator
 
-  constructor (order = 6, mode = 'char') {
+  constructor (order = 2, mode = 'word') {
     this.#order = this.#sanitizeOrder(order);
     this.#mode = mode;
     this.#separator = mode === 'word' ? ' ' : '';
@@ -37,6 +39,22 @@ class MarkovGenerator {
     return { success: true, message: `Markov order updated to ${parsedOrder}.` };
   }
 
+  setMode(newMode) {
+    const mode = newMode?.toLowerCase().trim();
+
+    if (!mode || (mode !== 'word' && mode !== 'char')) {
+      return { success: false, message: `Invalid mode. Please provide either "word" or "char".` };
+    }
+    
+    this.#mode = mode;
+    this.#separator = mode === 'word' ? ' ' : '';
+    this.#dictionary = {};
+    this.#startStates = [];
+    this.#buildCorpus();
+
+    return { success: true, message: `Markov mode updated to ${mode}.` };
+  }
+
   #sanitizeOrder(order) {
     const parsedOrder = Number(order);
 
@@ -51,11 +69,9 @@ class MarkovGenerator {
     const safeText = text.trim();
     const tokens = this.#mode === 'word' ? safeText.split(/\s+/) : safeText.split('');
 
-    // Stop 2 words short of the end since we need pairs + 1 next word
     for (let i = 0; i <= tokens.length - this.#order - 1; i++) {
       const stateTokens = tokens.slice(i, i + this.#order);
       const nextToken = tokens[i + this.#order];
-      
       const state = stateTokens.join(this.#separator);
 
       if (i === 0 || (i > 0 && ['.', '?', '!'].includes(tokens[i - 1].slice(-1)))) {
@@ -65,8 +81,15 @@ class MarkovGenerator {
       if (!this.#dictionary[state]) {
         this.#dictionary[state] = [];
       }
-
       this.#dictionary[state].push(nextToken);
+
+      if (i > 0) {
+        const previousToken = tokens[i - 1];
+        if (!this.#reverseDict[state]) {
+          this.#reverseDict[state] = [];
+        }
+        this.#reverseDict[state].push(previousToken);
+      }
     }
   }
 
@@ -102,7 +125,7 @@ class MarkovGenerator {
 
     }
 
-    return result.join(this.#separator);
+    return [result.join(this.#separator)];
   }
 
   generateReply(userPrompt, maxTokens = this.#mode === 'word' ? 30 : 200) {
@@ -116,68 +139,87 @@ class MarkovGenerator {
       : userPrompt.trim().split('');
 
     let seedState = null;
-    let matchedSize = 0;
     const dictionaryKeys = Object.keys(this.#dictionary);
 
-    // Strict Prefix Matching: Match the END of the prompt to the START of a state
     for (let currentSize = this.#order; currentSize > 0; currentSize--) {
-      // Get the last `currentSize` tokens from the user's prompt
-      const promptEndTokens = promptTokens.slice(-currentSize).map(t => t.toLowerCase());
-
-      seedState = dictionaryKeys.find(key => {
-        const keyTokens = key.split(this.#separator).map(t => t.toLowerCase());
-        
-        // Ensure the dictionary key strictly starts with our prompt tokens
-        for (let j = 0; j < currentSize; j++) {
-          if (keyTokens[j] !== promptEndTokens[j]) return false;
-        }
-        return true;
-      });
-
-      if (seedState) {
-        matchedSize = currentSize;
-        break;
+      if (seedState) break;
+      for (let i = promptTokens.length - currentSize; i >= 0; i--) {
+        const targetPhrase = promptTokens.slice(i, i + currentSize).join(this.#separator);
+        seedState = dictionaryKeys.find(key => key.toLowerCase().includes(targetPhrase));
+        if (seedState) break;
       }
     }
 
     // Absolute Fallback if no match is found anywhere
     if (!seedState) {
-      return [userPrompt.trim() + (this.#mode === 'word' ? ' ' : '') + this.generate(maxTokens)];
+      return this.generate(maxTokens);
     }
 
-    // Generate the continuation
-    let currentState = seedState;
-    let generatedTokens = [];
+    // --- PHASE 1: GENERATE BACKWARD ---
+    let backwardTokens = [];
+    let currentBackState = seedState;
+    // Limit backward generation so the seed doesn't get buried too deep
+    const maxBackTokens = Math.floor(maxTokens / 2);
 
-    // First, push any remainder of the matched seed state that wasn't part of the prompt
-    // (e.g., if we matched 2 chars of a 6-char state, push the remaining 4 chars first)
-    const seedTokens = currentState.split(this.#separator);
-    const remainder = seedTokens.slice(matchedSize);
-    generatedTokens.push(...remainder);
+    for (let i = 0; i < maxBackTokens; i++) {
+      const possiblePrevTokens = this.#reverseDict[currentBackState];
+      if (!possiblePrevTokens || possiblePrevTokens.length === 0) break;
 
-    // Then, generate the remaining random tokens
-    for (let i = this.#order; i < maxTokens; i++) {
-      const possibleNextTokens = this.#dictionary[currentState];
+      const prevToken = possiblePrevTokens[Math.floor(Math.random() * possiblePrevTokens.length)];
+      
+      // Add the new token to the FRONT of our backward array
+      backwardTokens.unshift(prevToken);
 
-      if (!possibleNextTokens || possibleNextTokens.length === 0) {
+      // Shift window backward: drop the last token, add the prev token to the front
+      const stateArray = currentBackState.split(this.#separator);
+      stateArray.pop();
+      stateArray.unshift(prevToken);
+      currentBackState = stateArray.join(this.#separator);
+
+      // Stop Condition: If the token we just looked at ends with punctuation, 
+      // it belongs to the PREVIOUS sentence. We remove it from our array and stop.
+      if (['.', '?', '!'].includes(prevToken.slice(-1))) {
+        backwardTokens.shift();
         break;
       }
+    }
+
+    // --- PHASE 2: GENERATE FORWARD ---
+    let forwardTokens = [];
+    let currentForwardState = seedState;
+    const maxForwardTokens = maxTokens - backwardTokens.length - this.#order;
+
+    for (let i = 0; i < maxForwardTokens; i++) {
+      const possibleNextTokens = this.#dictionary[currentForwardState];
+      if (!possibleNextTokens || possibleNextTokens.length === 0) break;
 
       const nextToken = possibleNextTokens[Math.floor(Math.random() * possibleNextTokens.length)];
-      generatedTokens.push(nextToken);
+      forwardTokens.push(nextToken);
 
-      const stateArray = currentState.split(this.#separator);
+      // Shift window forward
+      const stateArray = currentForwardState.split(this.#separator);
       stateArray.shift();
       stateArray.push(nextToken);
-      currentState = stateArray.join(this.#separator);
+      currentForwardState = stateArray.join(this.#separator);
 
-      // Stop early at punctuation
       if (['.', '?', '!'].includes(nextToken.slice(-1))) {
          break;
       }
     }
 
-    return [generatedTokens.join(this.#separator)];
+    // --- PHASE 3: ASSEMBLE ---
+    const seedArray = seedState.split(this.#separator);
+    const finalTokens = [...backwardTokens, ...seedArray, ...forwardTokens];
+
+    let finalResponse = finalTokens.join(this.#separator).trim();
+
+    // Capitalize the first letter and force a period if it abruptly cut off
+    finalResponse = finalResponse.charAt(0).toUpperCase() + finalResponse.slice(1);
+    if (!['.', '?', '!'].includes(finalResponse.slice(-1))) {
+      finalResponse += '.';
+    }
+
+    return [finalResponse];
   }
 
   async #fetchGutenbergText(url) {
@@ -235,8 +277,8 @@ class MarkovGenerator {
     let text1, text2, text3, text4;
 
     try {
-      if (fs.existsSync(TEXT1_FILE_PATH) && fs.existsSync(TEXT2_FILE_PATH) && fs.existsSync(TEXT3_FILE_PATH) && fs.existsSync(TEXT4_FILE_PATH)) {
-        text1 = this.#cleanGutenbergText(fs.readFileSync(TEXT1_FILE_PATH, 'utf8'));
+      if (fs.existsSync(TEXT2_FILE_PATH) && fs.existsSync(TEXT3_FILE_PATH) && fs.existsSync(TEXT4_FILE_PATH)) {
+        //text1 = this.#cleanGutenbergText(fs.readFileSync(TEXT1_FILE_PATH, 'utf8'));
         text2 = this.#cleanGutenbergText(fs.readFileSync(TEXT2_FILE_PATH, 'utf8'));
         text3 = this.#cleanGutenbergText(fs.readFileSync(TEXT3_FILE_PATH, 'utf8'));
         text4 = this.#cleanGutenbergText(fs.readFileSync(TEXT4_FILE_PATH, 'utf8'));
@@ -247,7 +289,7 @@ class MarkovGenerator {
 
     try {
         // Combine them into one massive string
-        const combinedCorpus = text1 + " " + text2 + " " + text3 + " " + text4;
+        const combinedCorpus = text2 + " " + text3 + " " + text4;
         console.log("Corpus ready! Total characters:", combinedCorpus.length);
         
         this.#train(combinedCorpus);

@@ -72,6 +72,11 @@ const commands = {
   order: (args, bot) => {
     const result = bot.updateOrder(args);
     return [result.message];
+  },
+
+  mode: (args, bot) => {
+    const result = bot.setMarkovMode(args);
+    return [result.message];
   }
 };
 

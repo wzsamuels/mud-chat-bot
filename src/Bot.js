@@ -96,6 +96,27 @@ export class Bot {
     }
   }
 
+  setGenerator(generator) {
+    const gen = generator?.toLowerCase().trim();
+    console.log(gen)
+
+    if (!gen || (gen !== 'llm' && gen !== 'markov')) {
+      return { success: false, message: `This command requires an argument of either "llm" or "markov".`}
+    }
+      
+    if (gen === 'markov') {
+      this.#activeGenerator = this.#markov;
+      return { success: true, message: `Active generator set to Markov.`}
+    } else {
+      this.#activeGenerator = this.#llm;
+      return { success: true, message: `Active generator set to LLM.`}
+    }
+  }
+
+  setMarkovMode(mode) {
+    return this.#markov.setMode(mode);
+  }
+
   updateOrder(newOrder) {
     return this.#markov.updateOrder(newOrder);
   }
