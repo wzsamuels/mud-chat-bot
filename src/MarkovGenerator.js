@@ -12,26 +12,28 @@ class MarkovGenerator {
   #dictionary = {}
   #startStates  = []
   #order
+  #mode
+  #separator
 
-  constructor (order = 7) {
+  constructor (order = 6, mode = 'char') {
     this.#order = order;
+    this.#mode = mode;
+    this.#separator = mode === 'word' ? ' ' : '';
     this.#buildCorpus()
   }
 
   #train(text) {
-    // const words = text.trim().split(/\s+/);
-    const words = text.trim().split('');
-
+    const safeText = text.trim();
+    const tokens = this.#mode === 'word' ? safeText.split(/\s+/) : safeText.split('');
 
     // Stop 2 words short of the end since we need pairs + 1 next word
-    for (let i = 0; i < words.length - this.#order - 1; i++) {
-      const stateWords = words.slice(i, i + this.#order);
-      const nextWord = words[i + this.#order];
+    for (let i = 0; i <= tokens.length - this.#order - 1; i++) {
+      const stateTokens = tokens.slice(i, i + this.#order);
+      const nextTokens = tokens[i + this.#order];
       
-      const state = stateWords.join(' ');
+      const state = stateTokens.join(this.#separator);
 
-      // Track sentence starters (looking at punctuation of the word before word1)
-      if (i === 0 || words[i - 1].endsWith('.') || words[i - 1].endsWith('?') || words[i - 1].endsWith('!')) {
+      if (i === 0 || (i > 0 && ['.', '?', '!'].includes(tokens[i - 1].slice(-1)))) {
         this.#startStates.push(state);
       }
 
@@ -39,56 +41,57 @@ class MarkovGenerator {
         this.#dictionary[state] = [];
       }
 
-      this.#dictionary[state].push(nextWord);
+      this.#dictionary[state].push(nextToken);
     }
   }
 
-  // Step 2: Generate random text
-  generate(maxWords = 30) {
+  // Generate random text
+  generate(maxTokens = this.#mode === 'word' ? 30 : 200) {
     if (this.#startStates.length === 0) {
       return "I need to be trained with some text first!";
     }
 
     // Pick a random starting state
     let currentState = this.#startStates[Math.floor(Math.random() * this.#startStates.length)];
-    let result = currentState.split(' '); // Split the 2 words into our result array
+    let result = currentState.split(this.#separator); // Split the 2 words into our result array
 
-    for (let i = this.#order; i < maxWords; i++) {
-      const possibleNextWords = this.#dictionary[currentState];
+    for (let i = this.#order; i < maxTokens; i++) {
+      const possibleNextTokens = this.#dictionary[currentState];
 
-      if (!possibleNextWords || possibleNextWords.length === 0) {
+      if (!possibleNextTokens || possibleNextTokens.length === 0) {
         break;
       }
 
-      const nextWord = possibleNextWords[Math.floor(Math.random() * possibleNextWords.length)];
-      result.push(nextWord);
+      const nextToken = possibleNextTokens[Math.floor(Math.random() * possibleNextTokens.length)];
+      result.push(nextToken);
 
       // Shift the window: drop word1, keep word2, add nextWord
-      const stateArray = currentState.split(' ');
+      const stateArray = currentState.split(this.#separator);
       stateArray.shift();
-      stateArray.push(nextWord);
-      currentState = stateArray.join(' ');
+      stateArray.push(nextToken);
+      currentState = stateArray.join(this.#separator);
 
     }
 
-    return result.join(' ');
+    return result.join(this.#separator``);
   }
 
-  generateReply(userPrompt, maxWords = 30) {
+  generateReply(userPrompt, maxTokens = this.#mode === 'word' ? 30 : 200) {
     if (Object.keys(this.#dictionary).length === 0) {
       return ["I need to be trained with some text first!"];
     }
 
-    const promptWords = userPrompt.trim().replace(/[.,!?]/g,'').toLowerCase().split(/\s+/);
+    const cleanPrompt = userPrompt.trim().replace(/[.,!?]/g, '').toLowerCase();
+    const promptTokens = this.#mode === 'word' ? cleanPrompt.split(/\s+/) : cleanPrompt.split('');
+    
     let seedState = null;
     const dictionaryKeys = Object.keys(this.#dictionary);
 
-    // 1. Try finding an Order-2 (two-word) match first for maximum relevance
     for (let currentState = this.#order; currentState > 0; currentState--) {
       if (seedState) break;
 
-      for (let i = promptWords.length - currentState; i >= 0; i--) {
-        const targetPhrase = promptWords.slice(i, i + currentState).join(' ');
+      for (let i = promptTokens.length - currentState; i >= 0; i--) {
+        const targetPhrase = promptTokens.slice(i, i + currentState).join(this.#separator);
         
         // Check if any state in the dictionary contains this phrase
         seedState = dictionaryKeys.find(key => key.toLowerCase().includes(targetPhrase));
@@ -98,30 +101,30 @@ class MarkovGenerator {
 
     // Absolute Fallback: Pivot gracefully and pick a random start
     if (!seedState) {
-      return [this.generate(maxWords)];
+      return [this.generate(maxTokens)];
     }
 
     // Generate the response starting from the found seed state
     let currentState = seedState;
-    let result = currentState.split(' ');
+    let result = currentState.split(this.#separator);
 
-    for (let i = this.#order; i < maxWords; i++) {
-      const possibleNextWords = this.#dictionary[currentState];
+    for (let i = this.#order; i < maxTokens; i++) {
+      const possibleNextTokens = this.#dictionary[currentState];
 
-      if (!possibleNextWords || possibleNextWords.length === 0) {
+      if (!possibleNextTokens || possibleNextTokens.length === 0) {
         break;
       }
 
-      const nextWord = possibleNextWords[Math.floor(Math.random() * possibleNextWords.length)];
-      result.push(nextWord);
+      const nextToken = possibleNextTokens[Math.floor(Math.random() * possibleNextTokens.length)];
+      result.push(nextToken);
 
-      const stateArray = currentState.split(' ');
+      const stateArray = currentState.split(this.#separator);
       stateArray.shift();
-      stateArray.push(nextWord);
-      currentState = stateArray.join(' ');
+      stateArray.push(nextToken);
+      currentState = stateArray.join(this.#separator);
     }
 
-    let finalResponse = result.join(' ');
+    let finalResponse = result.join(this.#separator);
     return [finalResponse.charAt(0).toUpperCase() + finalResponse.slice(1)];
   }
 
