@@ -110,33 +110,52 @@ class MarkovGenerator {
       return ["I need to be trained with some text first!"];
     }
 
-    const cleanPrompt = userPrompt.trim().replace(/[.,!?]/g, '').toLowerCase();
-    const promptTokens = this.#mode === 'word' ? cleanPrompt.split(/\s+/) : cleanPrompt.split('');
-    
+    // Split the prompt into tokens using the correct separator
+    const promptTokens = this.#mode === 'word' 
+      ? userPrompt.trim().split(/\s+/) 
+      : userPrompt.trim().split('');
+
     let seedState = null;
+    let matchedSize = 0;
     const dictionaryKeys = Object.keys(this.#dictionary);
 
-    for (let currentState = this.#order; currentState > 0; currentState--) {
-      if (seedState) break;
+    // Strict Prefix Matching: Match the END of the prompt to the START of a state
+    for (let currentSize = this.#order; currentSize > 0; currentSize--) {
+      // Get the last `currentSize` tokens from the user's prompt
+      const promptEndTokens = promptTokens.slice(-currentSize).map(t => t.toLowerCase());
 
-      for (let i = promptTokens.length - currentState; i >= 0; i--) {
-        const targetPhrase = promptTokens.slice(i, i + currentState).join(this.#separator);
+      seedState = dictionaryKeys.find(key => {
+        const keyTokens = key.split(this.#separator).map(t => t.toLowerCase());
         
-        // Check if any state in the dictionary contains this phrase
-        seedState = dictionaryKeys.find(key => key.toLowerCase().includes(targetPhrase));
-        if (seedState) break;
+        // Ensure the dictionary key strictly starts with our prompt tokens
+        for (let j = 0; j < currentSize; j++) {
+          if (keyTokens[j] !== promptEndTokens[j]) return false;
+        }
+        return true;
+      });
+
+      if (seedState) {
+        matchedSize = currentSize;
+        break;
       }
     }
 
-    // Absolute Fallback: Pivot gracefully and pick a random start
+    // Absolute Fallback if no match is found anywhere
     if (!seedState) {
-      return [this.generate(maxTokens)];
+      return [userPrompt.trim() + (this.#mode === 'word' ? ' ' : '') + this.generate(maxTokens)];
     }
 
-    // Generate the response starting from the found seed state
+    // Generate the continuation
     let currentState = seedState;
-    let result = currentState.split(this.#separator);
+    let generatedTokens = [];
 
+    // First, push any remainder of the matched seed state that wasn't part of the prompt
+    // (e.g., if we matched 2 chars of a 6-char state, push the remaining 4 chars first)
+    const seedTokens = currentState.split(this.#separator);
+    const remainder = seedTokens.slice(matchedSize);
+    generatedTokens.push(...remainder);
+
+    // Then, generate the remaining random tokens
     for (let i = this.#order; i < maxTokens; i++) {
       const possibleNextTokens = this.#dictionary[currentState];
 
@@ -145,20 +164,20 @@ class MarkovGenerator {
       }
 
       const nextToken = possibleNextTokens[Math.floor(Math.random() * possibleNextTokens.length)];
-      result.push(nextToken);
+      generatedTokens.push(nextToken);
 
       const stateArray = currentState.split(this.#separator);
       stateArray.shift();
       stateArray.push(nextToken);
       currentState = stateArray.join(this.#separator);
 
+      // Stop early at punctuation
       if (['.', '?', '!'].includes(nextToken.slice(-1))) {
          break;
       }
     }
 
-    let finalResponse = result.join(this.#separator);
-    return [finalResponse.charAt(0).toUpperCase() + finalResponse.slice(1)];
+    return [generatedTokens.join(this.#separator)];
   }
 
   async #fetchGutenbergText(url) {
@@ -213,8 +232,7 @@ class MarkovGenerator {
   async #buildCorpus() {
     console.log("Fetching texts from Gutenberg...");
     
-    let text1, text2, text3
-    let text4
+    let text1, text2, text3, text4;
 
     try {
       if (fs.existsSync(TEXT1_FILE_PATH) && fs.existsSync(TEXT2_FILE_PATH) && fs.existsSync(TEXT3_FILE_PATH) && fs.existsSync(TEXT4_FILE_PATH)) {
