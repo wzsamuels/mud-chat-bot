@@ -15,7 +15,7 @@ class MarkovGenerator {
   #mode
   #separator
 
-  constructor (order = 6, mode = 'char') {
+  constructor (order = 4, mode = 'char') {
     this.#order = order;
     this.#mode = mode;
     this.#separator = mode === 'word' ? ' ' : '';
