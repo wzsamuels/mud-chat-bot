@@ -29,7 +29,7 @@ class MarkovGenerator {
     // Stop 2 words short of the end since we need pairs + 1 next word
     for (let i = 0; i <= tokens.length - this.#order - 1; i++) {
       const stateTokens = tokens.slice(i, i + this.#order);
-      const nextTokens = tokens[i + this.#order];
+      const nextToken = tokens[i + this.#order];
       
       const state = stateTokens.join(this.#separator);
 
