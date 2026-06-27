@@ -68,6 +68,11 @@ const commands = {
     const result = bot.updateTemperature(args);
     return [result.message];
   },
+
+  order: (args, bot) => {
+    const result = bot.updateOrder(args);
+    return [result.message];
+  }
 };
 
 export default commands;

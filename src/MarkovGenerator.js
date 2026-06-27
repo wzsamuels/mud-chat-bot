@@ -22,6 +22,17 @@ class MarkovGenerator {
     this.#buildCorpus()
   }
 
+  updateOrder(newOrder) {
+    if (isNaN(newOrder) || newOrder < 1) {
+      return { success: false, message: "Invalid order. Please provide a positive integer." };
+    }
+    this.#order = newOrder;
+    this.#dictionary = {};
+    this.#startStates = [];
+    this.#buildCorpus();
+    return { success: true, message: `Markov order updated to ${newOrder}.` };
+  }
+
   #train(text) {
     const safeText = text.trim();
     const tokens = this.#mode === 'word' ? safeText.split(/\s+/) : safeText.split('');

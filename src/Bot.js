@@ -95,6 +95,10 @@ export class Bot {
       return { success: true, message: `Markov mode disabled.`}
     }
   }
+
+  updateOrder(newOrder) {
+    return this.#markov.updateOrder(newOrder);
+  }
 };
 
 export default Bot;
