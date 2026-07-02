@@ -1,27 +1,51 @@
 // MarkovGenerator.js
 import fs from 'fs'
 import path from 'path'
-import {logError} from './utils.js'
+import {logError, logMessage, readFilesWithExtension} from './utils.js'
 
-//const TEXT1_FILE_PATH = path.join(process.cwd(), 'data', 'pride.txt');
-const TEXT2_FILE_PATH = path.join(process.cwd(), 'data', 'alice.txt');
-const TEXT3_FILE_PATH = path.join(process.cwd(), 'data', 'madness.txt');
-const TEXT4_FILE_PATH = path.join(process.cwd(), 'data', 'nuclear.txt');
 const MAX_ORDER = 8;
 
 class MarkovGenerator {
   #dictionary = {}
   #reverseDict = {}
   #startStates  = []
+  #corpus = ""
+
   #order
   #mode
   #separator
 
-  constructor (order = 2, mode = 'word') {
+  constructor (corpus = "", order = 2, mode = 'word') {
+    this.#corpus = corpus
     this.#order = this.#sanitizeOrder(order);
     this.#mode = mode;
     this.#separator = mode === 'word' ? ' ' : '';
-    this.#buildCorpus()
+    this.#train();
+  }
+
+  static async create(order = 2, mode = 'word') {
+    let files = []
+
+    try {
+      files = await readFilesWithExtension(path.join(process.cwd(), 'data'), '.txt');
+
+      if (files.length === 0) {
+        throw new Error("Directory read successfully, but no text files were found.");
+      }
+
+      let corpus = "";
+
+      for (const file of files) {
+        corpus += " " + file.content;
+      }
+
+      return new MarkovGenerator(corpus, order, mode);
+      
+    } catch (error) {
+      console.log(error)
+      const defaultData = "Hello, I am a default bot. I have no custom training.";
+      return new MarkovGenerator(defaultData, order, mode);
+    }
   }
 
   updateOrder(newOrder) {
@@ -32,9 +56,7 @@ class MarkovGenerator {
     }
 
     this.#order = parsedOrder;
-    this.#dictionary = {};
-    this.#startStates = [];
-    this.#buildCorpus();
+    this.#train();
 
     return { success: true, message: `Markov order updated to ${parsedOrder}.` };
   }
@@ -48,9 +70,7 @@ class MarkovGenerator {
     
     this.#mode = mode;
     this.#separator = mode === 'word' ? ' ' : '';
-    this.#dictionary = {};
-    this.#startStates = [];
-    this.#buildCorpus();
+    this.#train();
 
     return { success: true, message: `Markov mode updated to ${mode}.` };
   }
@@ -65,8 +85,12 @@ class MarkovGenerator {
     return Math.min(parsedOrder, MAX_ORDER);
   }
 
-  #train(text) {
-    const safeText = text.trim();
+  #train() {
+    this.#dictionary = {};
+    this.#reverseDict = {};
+    this.#startStates = [];
+
+    const safeText = this.#corpus.trim();
     const tokens = this.#mode === 'word' ? safeText.split(/\s+/) : safeText.split('');
 
     for (let i = 0; i <= tokens.length - this.#order - 1; i++) {
@@ -143,10 +167,18 @@ class MarkovGenerator {
 
     for (let currentSize = this.#order; currentSize > 0; currentSize--) {
       if (seedState) break;
+
       for (let i = promptTokens.length - currentSize; i >= 0; i--) {
         const targetPhrase = promptTokens.slice(i, i + currentSize).join(this.#separator);
-        seedState = dictionaryKeys.find(key => key.toLowerCase().includes(targetPhrase));
-        if (seedState) break;
+
+        // 1. Use filter() to gather an array of ALL matching dictionary keys
+        const possibleSeeds = dictionaryKeys.filter(key => key.toLowerCase().includes(targetPhrase));
+        
+        // 2. If we found at least one match, pick one randomly
+        if (possibleSeeds.length > 0) {
+          seedState = possibleSeeds[Math.floor(Math.random() * possibleSeeds.length)];
+          break;
+        }
       }
     }
 
@@ -222,13 +254,7 @@ class MarkovGenerator {
     return [finalResponse];
   }
 
-  async #fetchGutenbergText(url) {
-    // 1. Fetch the raw text file
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-    let text = await response.text();
-
-    // 2. Strip the Gutenberg Header and Footer
+  #cleanText(text) {
     // Gutenberg markers usually look like "*** START OF THIS PROJECT GUTENBERG EBOOK... ***"
     const startRegex = /\*\*\*\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK.*?\*\*\*/i;
     const endRegex = /\*\*\*\s*END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK.*?\*\*\*/i;
@@ -243,60 +269,10 @@ class MarkovGenerator {
         text = text.substring(startIndex, endIndex);
     }
 
-    // 3. Clean up the formatting (remove newlines, collapse extra spaces)
+    // Clean up the formatting (remove newlines, collapse extra spaces)
     text = text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
 
     return text;
-  }
-
-  #cleanGutenbergText(text) {
-    // Gutenberg markers usually look like "*** START OF THIS PROJECT GUTENBERG EBOOK... ***"
-    const startRegex = /\*\*\*\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK.*?\*\*\*/i;
-    const endRegex = /\*\*\*\s*END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK.*?\*\*\*/i;
-
-    const startMatch = text.match(startRegex);
-    const endMatch = text.match(endRegex);
-
-    // If we find both markers, slice the string to only keep the actual book
-    if (startMatch && endMatch) {
-        const startIndex = startMatch.index + startMatch[0].length;
-        const endIndex = endMatch.index;
-        text = text.substring(startIndex, endIndex);
-    }
-
-    // 3. Clean up the formatting (remove newlines, collapse extra spaces)
-    text = text.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-    return text;
-  }
-
-  // Example usage: Combining Alice in Wonderland with Pride and Prejudice
-  async #buildCorpus() {
-    console.log("Fetching texts from Gutenberg...");
-    
-    let text1, text2, text3, text4;
-
-    try {
-      if (fs.existsSync(TEXT2_FILE_PATH) && fs.existsSync(TEXT3_FILE_PATH) && fs.existsSync(TEXT4_FILE_PATH)) {
-        //text1 = this.#cleanGutenbergText(fs.readFileSync(TEXT1_FILE_PATH, 'utf8'));
-        text2 = this.#cleanGutenbergText(fs.readFileSync(TEXT2_FILE_PATH, 'utf8'));
-        text3 = this.#cleanGutenbergText(fs.readFileSync(TEXT3_FILE_PATH, 'utf8'));
-        text4 = this.#cleanGutenbergText(fs.readFileSync(TEXT4_FILE_PATH, 'utf8'));
-      }
-    } catch (error) {
-      logError(error, 'Error loading texts');
-    }
-
-    try {
-        // Combine them into one massive string
-        const combinedCorpus = text2 + " " + text3 + " " + text4;
-        console.log("Corpus ready! Total characters:", combinedCorpus.length);
-        
-        this.#train(combinedCorpus);
-
-    } catch (error) {
-        console.error("Error building corpus:", error);
-    }
   }
 }
 
