@@ -13,10 +13,14 @@ export class Bot {
   #config = { useLLM: true };
 
   constructor(generator = 'llm') {
-    this.#llm = new LLMGenerator();
-    this.#markov = new MarkovGenerator();
     this.#activeGenerator = generator === 'markov' ? this.#markov : this.#llm;
   } 
+
+  async init() {
+    this.#llm = new LLMGenerator();
+    this.#markov = await MarkovGenerator.create();
+    this.#activeGenerator = this.#markov;
+  }
 
   getPromptHistory() {
     return this.#llm.promptHistory;
