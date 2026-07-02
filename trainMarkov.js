@@ -1,9 +1,9 @@
 import MarkovGenerator from './src/MarkovGenerator.js'
 
-const bot = new MarkovGenerator()
-
+const bot = await MarkovGenerator.create()
+console.log(bot)
 let text = bot.generate()
 console.log(text)
 
-text = bot.generateReply("How are you doing today?")
+text = bot.generateReply("Your mother is a whore")
 console.log(text)
