@@ -2,34 +2,58 @@
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenAI } from "@google/genai";
-import { PUNK_PROMPT, MAX_CHAT_HISTORY_LENGTH, MAX_PROMPT_HISTORY_LENGTH, DEFAULT_TEMP, AI_MODEL } from './config.js';
+import { DEFAULT_PROMPTS, MAX_CHAT_HISTORY_LENGTH, MAX_PROMPT_HISTORY_LENGTH, DEFAULT_TEMP, AI_MODEL } from './config.js';
 import { logError } from './utils.js';
-
 
 const SETTINGS_FILE_PATH = path.join(process.cwd(), 'data', 'settings.json');
 const MAX_TOKENS = 250
 
-export class LLMGenerator {
+class LLMGenerator {
   #ai;
   #chatHistory = [];
   #promptHistory = [];
   temperature = DEFAULT_TEMP;
-  prompt = PUNK_PROMPT;
+  prompt = DEFAULT_PROMPTS[Math.floor(Math.random() * DEFAULT_PROMPTS.length)];
+
+  commands = {
+    temp: (args) => this.updateTemperature(args),
+    prompt: (args) => this.updatePrompt(args),
+    clear: (args) => this.clearChatHistory(),
+    random_prompt: (args) => {
+      const randomPrompt = DEFAULT_PROMPTS[Math.floor(Math.random() * DEFAULT_PROMPTS.length)];
+      return this.updatePrompt(randomPrompt);
+    },
+    status: (args) => this.status(),
+  }
 
   constructor() {
     this.#ai = new GoogleGenAI({});
     this.#loadSettings();
   }
 
+  status() {
+    let status = [
+      `Current AI: LLM`,
+      `Current temperature: ${this.temperature}`,
+      `Current prompt: ${this.prompt}`,
+    ]
+
+    if (this.#promptHistory.length > 0) {
+      status.push("Previous prompts:")
+      for (let i = 0; i < this.#promptHistory.length; i++) {
+        status.push(`[${i + 1}] ${this.#promptHistory[i]}`)
+      }
+    }
+    
+    return status;
+  }
+
   clearChatHistory() {
     this.#chatHistory.length = 0
+    return ["Chat history cleared."];
   }
 
-  get promptHistory() {
-    return[...this.#promptHistory]
-  }
-
-  async #createChatCompletion(messages, errorContext) {
+  async #createChatCompletion(messages) {
     try {
       let systemInstruction = "";
       const contents = [];
@@ -44,6 +68,8 @@ export class LLMGenerator {
         }
       }
 
+      console.log("Sending to AI:", { model: AI_MODEL, contents, config: { systemInstruction, temperature: this.temperature } });
+
       const response = await this.#ai.models.generateContent({
         model: AI_MODEL,
         contents,
@@ -54,7 +80,7 @@ export class LLMGenerator {
       });
       return response.text.trim().replace(/(\r\n|\n|\r)/gm, " ");
     } catch (error) {
-      logError(error, errorContext);
+      logError(error, 'AI Response Generation');
       return null;
     }
   }
@@ -75,10 +101,7 @@ export class LLMGenerator {
       ...this.#chatHistory,
     ];
 
-    const aiMessage = await this.#createChatCompletion(
-      messagesToSend,
-      'AI Response Generation'
-    );
+    const aiMessage = await this.#createChatCompletion(messagesToSend);
 
     if (aiMessage) {
       this.#chatHistory.push({ role: 'assistant', content: aiMessage });
@@ -117,9 +140,10 @@ export class LLMGenerator {
 
   updatePrompt(newPrompt) {
     if (!newPrompt || typeof newPrompt !== 'string') {
-      return { success: false, message: `Invalid prompt, idiot.`}
+      return [`Invalid prompt, idiot.`];
     }
 
+    bot.clearChatHistory();
     this.#promptHistory.push(this.prompt);
     
     if (this.#promptHistory.length >= MAX_PROMPT_HISTORY_LENGTH) {
@@ -128,16 +152,18 @@ export class LLMGenerator {
     
     this.prompt = newPrompt;
     this.#saveSettings();
-    return {success: true, message: `Prompt updated.`}
+    return [`Prompt updated.`];
   }
 
   updateTemperature(newTemp) {
     const temp = parseFloat(newTemp);
     if (isNaN(temp) || temp < 0.0 || temp > 2.0) {
-      return {success: false, message: `Invalid temperature: ${temp}. Please provide a number between 0.0 and 2.0.`}
+      return [`Invalid temperature: ${temp}. Please provide a number between 0.0 and 2.0.`];
     }
     this.temperature = temp
     this.#saveSettings()
-    return {success: true, message: `Temperature updated: ${temp}.`}
+    return [`Temperature updated: ${temp}.`];
   }
 }
+
+export default LLMGenerator;

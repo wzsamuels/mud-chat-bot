@@ -9,21 +9,26 @@ class MarkovGenerator {
   #dictionary = {}
   #reverseDict = {}
   #startStates  = []
-  #corpus = ""
-
+  #corpus
   #order
-  #mode
+  #token
   #separator
 
-  constructor (corpus = "", order = 2, mode = 'word') {
+  commands = {
+    markov_order: (args) => this.updateOrder(args),
+    markov_token: (args) => this.updateToken(args),
+    status: (args) => this.status(),
+  };
+
+  constructor (corpus = '', order = 3, token = 'word') {
     this.#corpus = corpus
     this.#order = this.#sanitizeOrder(order);
-    this.#mode = mode;
-    this.#separator = mode === 'word' ? ' ' : '';
+    this.#token = token;
+    this.#separator = token === 'word' ? ' ' : '';
     this.#train();
   }
 
-  static async create(order = 2, mode = 'word') {
+  static async create(order = 2, token = 'word') {
     let files = []
 
     try {
@@ -39,13 +44,23 @@ class MarkovGenerator {
         corpus += " " + file.content;
       }
 
-      return new MarkovGenerator(corpus, order, mode);
+      return new MarkovGenerator(corpus, order, token);
       
     } catch (error) {
       console.log(error)
       const defaultData = "Hello, I am a default bot. I have no custom training.";
-      return new MarkovGenerator(defaultData, order, mode);
+      return new MarkovGenerator(defaultData, order, token);
     }
+  }
+
+  status() {
+    let status = [
+      `Current AI: Markov`,
+      `Current order: ${this.#order}`,
+      `Current token: ${this.#token}`,
+    ]
+    
+    return status;
   }
 
   updateOrder(newOrder) {
@@ -58,21 +73,21 @@ class MarkovGenerator {
     this.#order = parsedOrder;
     this.#train();
 
-    return { success: true, message: `Markov order updated to ${parsedOrder}.` };
+    return [`Markov order updated to ${parsedOrder}.`];
   }
 
-  setMode(newMode) {
-    const mode = newMode?.toLowerCase().trim();
+  updateToken(newToken) {
+    const token = newToken?.toLowerCase().trim();
 
-    if (!mode || (mode !== 'word' && mode !== 'char')) {
-      return { success: false, message: `Invalid mode. Please provide either "word" or "char".` };
+    if (!token || (token !== 'word' && token !== 'char')) {
+      return { success: false, message: `Invalid token. Please provide either "word" or "char".` };
     }
     
-    this.#mode = mode;
-    this.#separator = mode === 'word' ? ' ' : '';
+    this.#token = token;
+    this.#separator = token === 'word' ? ' ' : '';
     this.#train();
 
-    return { success: true, message: `Markov mode updated to ${mode}.` };
+    return [`Markov token updated to ${token}.`];
   }
 
   #sanitizeOrder(order) {
@@ -91,7 +106,7 @@ class MarkovGenerator {
     this.#startStates = [];
 
     const safeText = this.#corpus.trim();
-    const tokens = this.#mode === 'word' ? safeText.split(/\s+/) : safeText.split('');
+    const tokens = this.#token === 'word' ? safeText.split(/\s+/) : safeText.split('');
 
     for (let i = 0; i <= tokens.length - this.#order - 1; i++) {
       const stateTokens = tokens.slice(i, i + this.#order);
@@ -118,7 +133,7 @@ class MarkovGenerator {
   }
 
   // Generate random text
-  generate(maxTokens = this.#mode === 'word' ? 30 : 200) {
+  generate(maxTokens = this.#token === 'word' ? 30 : 200) {
     if (this.#startStates.length === 0) {
       return "I need to be trained with some text first!";
     }
@@ -152,13 +167,13 @@ class MarkovGenerator {
     return [result.join(this.#separator)];
   }
 
-  generateReply(userPrompt, maxTokens = this.#mode === 'word' ? 30 : 200) {
+  generateReply(userPrompt, maxTokens = this.#token === 'word' ? 30 : 200) {
     if (Object.keys(this.#dictionary).length === 0) {
       return ["I need to be trained with some text first!"];
     }
 
     // Split the prompt into tokens using the correct separator
-    const promptTokens = this.#mode === 'word' 
+    const promptTokens = this.#token === 'word' 
       ? userPrompt.trim().split(/\s+/) 
       : userPrompt.trim().split('');
 

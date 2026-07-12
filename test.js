@@ -1,7 +1,8 @@
 import readline from 'readline';
 import Bot from './src/Bot.js';
 
-const bot = new Bot('markov')
+const bot = new Bot('markov');
+await bot.init();
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -9,12 +10,23 @@ const rl = readline.createInterface({
 });
 
 console.log('You can start chatting with the bot. Type your message and press Enter.');
+rl.prompt();
 
 rl.on('line', async (input) => {
-  const response = await bot.generateReply(input);
-  if (response) {
-    console.log(response)
-    console.log('Bot: ' + response);
+  try {
+    if (input.trim() === '') {
+      console.log('Please enter a message.');
+      rl.prompt();
+      return;
+    }
+
+    const response = await bot.generateReply(input);
+    if (response) {
+      console.log('Bot: ' + response);
+    }
+  } catch (error) {
+    console.error('Error:', error.message);
   }
+
   rl.prompt();
 });

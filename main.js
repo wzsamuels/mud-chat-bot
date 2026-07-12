@@ -52,17 +52,21 @@ function connect() {
             break;
           }
 
-          reply = await bot.generateReply(userMessage);
-          
-          for (const line of reply) {
-            console.log("Line: ", line)
-            const formattedLine = formatReply(line, {userName, channelName, whisper})
-            console.log(formattedLine)
-            logMessage(`[REPLY]: ${formattedLine}`)
-
-            client.write(formattedLine)
+          try {
+            reply = await bot.generateReply(userMessage);
+          } catch (error) {
+            logError(error, 'Reply Generation');
+            reply = [`[ERROR] Hey, you screwed up! I encountered an error while generating a reply: ${error.message}`];
           }
 
+          for (const line of reply) {
+              console.log("Line: ", line)
+              const formattedLine = formatReply(line, {userName, channelName, whisper})
+              console.log(formattedLine)
+              logMessage(`[REPLY]: ${formattedLine}`)
+
+              client.write(formattedLine)
+            }
           break;
         }
       }
@@ -93,19 +97,4 @@ function connect() {
   });
 }
 
-if (process.env.TEST_MODE === 'true') {
-  // Read user input from the console (for testing)
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  rl.on('line', (input) => {
-    if (client && !client.destroyed) {
-      client.write(input + '\n');
-    }
-  });
-
-  rl.prompt();
-}
 connect();
