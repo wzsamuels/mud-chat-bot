@@ -28,6 +28,44 @@ std::vector<std::string> tokenize(const std::string& text) {
     return tokens;
 }
 
+std::string clean_gutenberg_text(const std::string& text) {
+    // 1. Locate the START marker
+    size_t start_pos = text.find("*** START OF THE PROJECT GUTENBERG");
+    if (start_pos == std::string::npos) {
+        start_pos = text.find("*** START OF THIS PROJECT GUTENBERG");
+    }
+    
+    // If we found the start text, we need to advance past its closing asterisks
+    if (start_pos != std::string::npos) {
+        size_t closing_asterisks = text.find("***", start_pos + 10);
+        if (closing_asterisks != std::string::npos) {
+            start_pos = closing_asterisks + 3; // Move the index completely past the asterisks
+        } else {
+            start_pos = 0; // Fallback if formatting is completely broken
+        }
+    } else {
+        start_pos = 0;
+    }
+
+    // 2. Locate the END marker (starting the search from where the header ended)
+    size_t end_pos = text.find("*** END OF THE PROJECT GUTENBERG", start_pos);
+    if (end_pos == std::string::npos) {
+        end_pos = text.find("*** END OF THIS PROJECT GUTENBERG", start_pos);
+    }
+
+    // If no end marker is found, we'll just read to the end of the file
+    if (end_pos == std::string::npos) {
+        end_pos = text.length();
+    }
+
+    // 3. Slice and return the actual book text
+    if (start_pos < end_pos) {
+        return text.substr(start_pos, end_pos - start_pos);
+    }
+    
+    return text;
+}
+
 int main() {
     sqlite3* db;
     if (sqlite3_open("markov-soda.db", &db) != SQLITE_OK) {
@@ -40,7 +78,7 @@ int main() {
     execute_sql(db, "PRAGMA synchronous = NORMAL;");
 
     // Initialize Schema
-execute_sql(db, R"(
+    execute_sql(db, R"(
         CREATE TABLE IF NOT EXISTS n_grams (
             state TEXT PRIMARY KEY,
             is_start BOOLEAN DEFAULT 0
@@ -85,7 +123,7 @@ execute_sql(db, R"(
     int counter = 0;
     for (const auto& entry : fs::directory_iterator(data_path)) {
         counter++;
-        if (counter == 300) break; // Limit to 300 files for testing
+        if (counter == 600) break; // Limit to 300 files for testing
 
         if (entry.path().extension() == ".txt") {
             std::cout << "Processing: " << entry.path().filename() << "\n";
@@ -95,7 +133,7 @@ execute_sql(db, R"(
             buffer << file.rdbuf();
             std::string content = buffer.str();
             
-            // TODO: Add your Gutenberg start/end regex stripping logic here
+            content = clean_gutenberg_text(content);            
             
             std::vector<std::string> tokens = tokenize(content);
             if (tokens.size() <= order) continue;
