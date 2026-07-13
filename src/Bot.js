@@ -27,19 +27,26 @@ export class Bot {
     help: (args) => helpMessage,
   };
 
-  constructor(generator = 'llm') {
+  constructor(generator = 'markov') {
     if (!['llm', 'slm', 'markov'].includes(generator)) {
       throw new Error(`Invalid generator type: ${generator}. Must be either 'llm', 'slm', or 'markov'.`);
     }
 
-    this.#activeGenerator = generator === 'markov' ? this.#markov : this.#llm;
-  } 
-
-  async init() {
     this.#llm = new LLMGenerator();
     this.#slm = new SLMGenerator();
     this.#markov = new MarkovGenerator();
-    this.#activeGenerator = this.#markov;
+
+    switch (generator) {
+      case 'llm':
+        this.#activeGenerator = this.#llm;
+        break;
+      case 'slm':
+        this.#activeGenerator = this.#slm;
+        break;
+      case 'markov':
+        this.#activeGenerator = this.#markov;
+        break;
+    } 
   }
   
   async generateReply(text) {
