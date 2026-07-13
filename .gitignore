@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 
 .env
-
-data/settings.json
+data/
+*.db
+*.db-*
