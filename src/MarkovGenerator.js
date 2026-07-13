@@ -2,7 +2,7 @@
 import fs from 'fs'
 import path from 'path'
 import {logError, logMessage, readFilesWithExtension} from './utils.js'
-import db from './db.js'
+import {personalities} from './PersonalityManager.js'
 
 const ORDER = 3; // Default order for the Markov chain
 const MAX_ORDER = 8;
@@ -10,9 +10,13 @@ const MAX_ORDER = 8;
 class MarkovGenerator {
   #db
 
+  constructor(personalityName = 'classic') {
+    this.#db = personalities.getDatabase(personalityName); 
+  }
+
   commands = {
     status: (args) => this.status(),
-    markov_personality: (args) => this.changePersonality(args || 'classic'),
+    markov_persona: (args) => this.updatePersonality(args || 'modern'),
   };
 
   status() {
@@ -24,11 +28,7 @@ class MarkovGenerator {
     return status;
   }
 
-  constructor(personalityName = 'classic') {
-    this.#db = personalities.getDatabase(personalityName); 
-  }
-
-  changePersonality(personalityName) {
+  updatePersonality(personalityName) {
     const newDb = personalities.getDatabase(personalityName);
     if (newDb) {
       this.#db = newDb;
@@ -39,15 +39,30 @@ class MarkovGenerator {
 
   // Generate random text
   generate(maxTokens = 30) {
-    // Get all valid starting states
-    const startStates = db.prepare(`SELECT state FROM n_grams WHERE is_start = 1`).all();
+    // 1. Fast random selection bypassing full table scans and array building
+    const getStart = this.#db.prepare(`
+      SELECT state FROM n_grams 
+      WHERE rowid >= (abs(random()) % (SELECT max(rowid) FROM n_grams))
+        AND is_start = 1 
+      LIMIT 1
+    `);
     
-    if (startStates.length === 0) return "I need to be trained with some text first!";
+    let row = getStart.get();
 
-    let currentState = startStates[Math.floor(Math.random() * startStates.length)].state;
+    // 2. Edge case fallback: If the random jump landed at the very end 
+    // of the database and no start states remained, just grab the first one.
+    if (!row) {
+      row = this.#db.prepare(`SELECT state FROM n_grams WHERE is_start = 1 LIMIT 1`).get();
+    }
+
+    if (!row) {
+      return ["I need to be trained with some text first!"];
+    }
+
+    let currentState = row.state;
     let result = currentState.split(' ');
 
-    const getTransitions = db.prepare(`SELECT next_token, frequency FROM transitions WHERE state = ?`);
+    const getTransitions = this.#db.prepare(`SELECT next_token, frequency FROM transitions WHERE state = ?`);
 
     for (let i = ORDER; i < maxTokens; i++) {
       const possibleNextTokens = getTransitions.all(currentState);
@@ -55,14 +70,14 @@ class MarkovGenerator {
       if (possibleNextTokens.length === 0) break;
 
       // Weighted random selection
-      const totalWeight = possibleNextTokens.reduce((sum, row) => sum + row.frequency, 0);
+      const totalWeight = possibleNextTokens.reduce((sum, r) => sum + r.frequency, 0);
       let randomNum = Math.floor(Math.random() * totalWeight);
       
       let nextToken = null;
-      for (const row of possibleNextTokens) {
-        randomNum -= row.frequency;
+      for (const r of possibleNextTokens) {
+        randomNum -= r.frequency;
         if (randomNum < 0) {
-          nextToken = row.next_token;
+          nextToken = r.next_token;
           break;
         }
       }
@@ -82,7 +97,7 @@ class MarkovGenerator {
 
   generateReply(userPrompt, maxTokens = 30) {
     // Quick check to ensure the database is populated
-    const hasData = db.prepare(`SELECT 1 FROM n_grams LIMIT 1`).get();
+    const hasData = this.#db.prepare(`SELECT 1 FROM n_grams LIMIT 1`).get();
     if (!hasData) {
       return ["I need to be trained with some text first!"];
     }
@@ -92,10 +107,10 @@ class MarkovGenerator {
 
     // Prepare the search query once. 
     // ORDER BY RANDOM() LIMIT 1 instantly picks a random match at the database level.
-    const findSeed = db.prepare(`
+    const findSeed = this.#db.prepare(`
       SELECT state FROM n_grams 
       WHERE state LIKE ? 
-      ORDER BY RANDOM() LIMIT 1
+      LIMIT 50
     `);
 
     // Find the seed state
@@ -106,10 +121,11 @@ class MarkovGenerator {
         const targetPhrase = promptTokens.slice(i, i + currentSize).join(' ');
 
         // The % wildcards allow the target phrase to be matched anywhere in the state
-        const row = findSeed.get(`%${targetPhrase}%`);
+        const rows = findSeed.all(`${targetPhrase}%`);
         
-        if (row) {
-          seedState = row.state;
+        if (rows.length > 0) {
+          // Pick a random seed from the fast results in Node, avoiding a DB sort.
+          seedState = rows[Math.floor(Math.random() * rows.length)].state;
           break;
         }
       }
@@ -121,8 +137,8 @@ class MarkovGenerator {
     }
 
     // Prepare transition queries for both phases
-    const getPrevTokens = db.prepare(`SELECT prev_token, frequency FROM reverse_transitions WHERE state = ?`);
-    const getNextTokens = db.prepare(`SELECT next_token, frequency FROM transitions WHERE state = ?`);
+    const getPrevTokens = this.#db.prepare(`SELECT prev_token, frequency FROM reverse_transitions WHERE state = ?`);
+    const getNextTokens = this.#db.prepare(`SELECT next_token, frequency FROM transitions WHERE state = ?`);
 
     // --- PHASE 1: GENERATE BACKWARD ---
     let backwardTokens = [];
