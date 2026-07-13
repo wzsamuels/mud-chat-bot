@@ -1,6 +1,6 @@
 import MarkovGenerator from './src/MarkovGenerator.js'
 
-const bot = await MarkovGenerator.create()
+const bot = new MarkovGenerator();
 console.log(bot)
 let text = bot.generate()
 console.log(text)
