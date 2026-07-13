@@ -1,0 +1,2 @@
+markov-soda.db filter=lfs diff=lfs merge=lfs -text
+markov.db filter=lfs diff=lfs merge=lfs -text

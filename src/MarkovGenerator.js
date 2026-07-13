@@ -8,9 +8,11 @@ const ORDER = 3; // Default order for the Markov chain
 const MAX_ORDER = 8;
 
 class MarkovGenerator {
+  #db
 
   commands = {
     status: (args) => this.status(),
+    markov_personality: (args) => this.changePersonality(args || 'classic'),
   };
 
   status() {
@@ -22,7 +24,18 @@ class MarkovGenerator {
     return status;
   }
 
+  constructor(personalityName = 'classic') {
+    this.#db = personalities.getDatabase(personalityName); 
+  }
 
+  changePersonality(personalityName) {
+    const newDb = personalities.getDatabase(personalityName);
+    if (newDb) {
+      this.#db = newDb;
+      return `Switched personality to ${personalityName}.`;
+    }
+    return `Error: Could not find database for ${personalityName}.`;
+  }
 
   // Generate random text
   generate(maxTokens = 30) {

@@ -38,7 +38,7 @@ export class Bot {
   async init() {
     this.#llm = new LLMGenerator();
     this.#slm = new SLMGenerator();
-    this.#markov = await MarkovGenerator.create();
+    this.#markov = new MarkovGenerator();
     this.#activeGenerator = this.#markov;
   }
   
