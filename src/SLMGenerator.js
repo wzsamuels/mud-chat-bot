@@ -2,16 +2,20 @@ class SLMGenerator {
   constructor() {
   }
 
+  commands = { 
+    status: (args) => this.status()
+  };
+
   status() {
-      return [
-          `Current AI: SLM`,
-          `Current temperature: N/A`,
-          `Current prompt: N/A`,
-      ];
+    return [
+        `Current AI: SLM`,
+        `Current temperature: N/A`,
+        `Current prompt: N/A`,
+    ];
   }
 
   async generateReply(userMessage) {
-     const apiUrl = "http://127.0.0.1:8000/generate"; 
+    const apiUrl = "http://127.0.0.1:8000/generate"; 
 
     // This payload explicitly matches your Python FastAPI ChatRequest Pydantic model
     const payload = {
