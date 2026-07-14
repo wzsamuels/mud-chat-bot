@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import { logMessage } from './utils.js';
 
 class PersonalityManager {
   #connections = {};
@@ -17,7 +18,7 @@ class PersonalityManager {
         db.pragma('temp_store = MEMORY');
 
         this.#connections[personalityName] = db;
-        console.log(`Loaded personality: ${personalityName}`);
+        logMessage(`Loaded personality: ${personalityName}`);
       } catch (error) {
         console.error(`Failed to load personality '${personalityName}':`, error.message);
         return null; // Handle fallback logic in your bot
@@ -32,7 +33,7 @@ class PersonalityManager {
     if (this.#connections[personalityName]) {
       this.#connections[personalityName].close();
       delete this.#connections[personalityName];
-      console.log(`Unloaded personality: ${personalityName}`);
+      logMessage(`Unloaded personality: ${personalityName}`);
     }
   }
 }

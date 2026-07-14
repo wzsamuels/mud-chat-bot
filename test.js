@@ -1,8 +1,7 @@
 import readline from 'readline';
 import Bot from './src/Bot.js';
 
-const bot = new Bot('markov');
-await bot.init();
+const bot = new Bot('slm');
 
 const rl = readline.createInterface({
   input: process.stdin,
