@@ -7,12 +7,11 @@ import LLMGenerator from './LLMGenerator.js';
 import SLMGenerator from './SLMGenerator.js';
 
 const helpMessage = [ 
-  "ChatBot has some commands to extend it's functionality.",
+  "ChatBot has some commands to extend it's functionality. Not all commands are available for all AI models.",
+  "@ai [llm/slm/markov] - Switches the current AI model to either LLM, SLM, or Markov. The default is Markov.",
   "@prompt [prompt] - Set's ChatBot's system prompt to [prompt].",
-  "The are also some built-in prompts: 'anime', 'snarky', 'punk', and 'smart'. 'Punk' is the default prompt.",
   "@temp [value] - Sets the temperature for AI responses (0.0 to 2.0).",
   "@clearhistory - Clears ChatBot's recent chat history.",
-  "@markov [on/off] - Enables or disables the Markov chain response generator. ChatBot's prompt has no effect in Markov mode.",
   "@status - Shows ChatBot's current prompt, temperature, and recent prompt history."
 ];
 

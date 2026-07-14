@@ -1,4 +1,6 @@
 class SLMGenerator {
+  #temperature = 1.0;
+
   constructor() {
   }
 
@@ -9,9 +11,18 @@ class SLMGenerator {
   status() {
     return [
         `Current AI: SLM`,
-        `Current temperature: N/A`,
+        `Current temperature: ${this.#temperature}`,
         `Current prompt: N/A`,
     ];
+  }
+
+  setTemperature(value) {
+    const temp = parseFloat(value);
+    if (isNaN(temp) || temp < 0.0 || temp > 2.0) {
+      return ["Temperature must be a number between 0.0 and 2.0."];
+    }
+    this.#temperature = temp;
+    return [`Temperature set to ${this.#temperature}`];
   }
 
   async generateReply(userMessage) {
@@ -20,7 +31,7 @@ class SLMGenerator {
     // This payload explicitly matches your Python FastAPI ChatRequest Pydantic model
     const payload = {
         prompt: userMessage,
-        temperature: 1.0,       // Adjust for chaos level (0.8 - 1.2 is the sweet spot)
+        temperature: this.#temperature,       // Adjust for chaos level (0.8 - 1.2 is the sweet spot)
         max_new_tokens: 50      // Prevents the model from generating infinitely
     };
 

@@ -16,7 +16,7 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 seconds
 
-const bot = new Bot('slm');
+const bot = new Bot('markov');
 
 function connect() {
   client = new net.Socket();
