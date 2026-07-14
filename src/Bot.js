@@ -22,7 +22,7 @@ export class Bot {
   #activeGenerator;
 
   systemCommands = {
-    ai: (args) => [this.setGenerator(args).message],
+    ai: (args) => this.setGenerator(args),
     help: (args) => helpMessage,
   };
 
@@ -84,7 +84,7 @@ export class Bot {
       
     if (gen === 'markov') {
       this.#activeGenerator = this.#markov;
-      return { success: true, message: `Active generator set to Markov.`}
+      return [`Active generator set to Markov.`];
     } else if (gen === 'slm') {
       this.#activeGenerator = this.#slm;
       return [`Active generator set to SLM.`];
