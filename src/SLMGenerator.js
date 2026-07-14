@@ -40,7 +40,7 @@ class SLMGenerator {
         const data = await response.json();
         
         // FastAPI returns the dictionary we defined: {"response": "clean_response"}
-        return data.response; 
+        return data.response.trim().replace(/(\r\n|\n|\r)/gm, " ");; 
 
     } catch (error) {
         console.error("Failed to communicate with the Victorian Troll API:", error);
