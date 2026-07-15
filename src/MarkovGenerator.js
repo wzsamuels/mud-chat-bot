@@ -22,7 +22,9 @@ class MarkovGenerator {
   status() {
     let status = [
       `Current AI: Markov`,
-      `No prompt is used in Markov mode.`,
+      `Current prompt: N/A`,
+      `Current temperature: N/A`,
+      `Current personality: ${this.#db ? this.#db.name : 'N/A'}`,
     ]
     
     return status;
