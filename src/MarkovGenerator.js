@@ -34,9 +34,9 @@ class MarkovGenerator {
     const newDb = personalities.getDatabase(personalityName);
     if (newDb) {
       this.#db = newDb;
-      return `Switched personality to ${personalityName}.`;
+      return [`Switched personality to ${personalityName}.`];
     }
-    return `Error: Could not find database for ${personalityName}.`;
+    return [`Error: Could not find database for ${personalityName}.`];
   }
 
   // Generate random text
