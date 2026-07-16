@@ -99,6 +99,8 @@ int main() {
         );
         CREATE INDEX IF NOT EXISTS idx_transitions_state ON transitions(state);
         CREATE INDEX IF NOT EXISTS idx_reverse_state ON reverse_transitions(state);
+
+        CREATE INDEX IF NOT EXISTS idx_ngrams_nocase ON n_grams(state COLLATE NOCASE);
     )");
 
     // Prepare SQL statements once to maximize loop efficiency
