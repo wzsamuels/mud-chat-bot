@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { logMessage } from './utils.js';
+import { DATA_DIR, ENV } from './config.js';
 
 class PersonalityManager {
   #connections = {};
@@ -9,7 +10,10 @@ class PersonalityManager {
   getDatabase(personalityName) {
     if (!this.#connections[personalityName]) {
       try {
-        const dbPath = path.join(process.cwd(), `${personalityName}_markov.db`);
+        const dbRoot = ENV === 'production' ? '/' : process.cwd();
+        const dbPath = path.join(dbRoot, `${DATA_DIR}/${personalityName}_markov.db`);
+        console.log(`Loading personality: ${personalityName} from ${dbPath}`);
+
         const db = new Database(dbPath, { fileMustExist: true }); // Prevent creating an empty DB on typo
         
         // Apply optimized read settings
