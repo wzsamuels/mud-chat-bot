@@ -11,6 +11,8 @@ class PersonalityManager {
     if (!this.#connections[personalityName]) {
       try {
         const dbPath = path.join(process.cwd(), `${DATA_DIR}/${personalityName}_markov.db`);
+        console.log(`Loading personality: ${personalityName} from ${dbPath}`);
+
         const db = new Database(dbPath, { fileMustExist: true }); // Prevent creating an empty DB on typo
         
         // Apply optimized read settings
