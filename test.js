@@ -21,7 +21,7 @@ rl.on('line', async (input) => {
 
     const response = await bot.generateReply(input);
     if (response) {
-      console.log('Bot: ' + response);
+      console.log('\nBot: ' + response + '\n');
     }
   } catch (error) {
     console.error('Error:', error.message);
