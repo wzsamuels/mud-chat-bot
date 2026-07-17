@@ -17,10 +17,13 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 seconds
 
 const bot = new Bot('markov');
+console.log(`Bot initialized with generator: markov`);
 
 function connect() {
   client = new net.Socket();
 
+  console.log(`Attempting to connect to MUD server at ${MUD_HOST}:${MUD_PORT}...`);
+  
   client.connect(MUD_PORT, MUD_HOST, () => {
     console.log('Connected to the MUD server');
     client.write(`connect ${BOT_NAME} ${BOT_PASSWORD}\n`);
