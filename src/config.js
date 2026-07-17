@@ -28,6 +28,7 @@ export const MUD_HOST = process.env.MUD_HOST;
 export const MUD_PORT = process.env.MUD_PORT;
 export const AI_MODEL = process.env.AI_MODEL;
 export const MARKOV_API = process.env.MARKOV_API;
+export const SLM_API = process.env.SLM_API;
 export const DEFAULT_TEMP = 0.7;
 
 export {
