@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { logError } from './utils.js';
 
-const requiredEnvVars = ['BOT_NAME', 'BOT_PASSWORD', 'MUD_HOST', 'MUD_PORT', 'AI_MODEL', 'MARKOV_API', 'SLM_API'];
+const requiredEnvVars = ['BOT_NAME', 'BOT_PASSWORD', 'MUD_HOST', 'MUD_PORT', 'AI_MODEL'];
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     const error = new Error(`Missing required environment variable: ${envVar}`);
