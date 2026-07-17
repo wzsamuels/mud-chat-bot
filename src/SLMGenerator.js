@@ -1,4 +1,5 @@
 // SLMGenerator.js
+import { SLM_API } from './config.js';
 
 class SLMGenerator {
   #temperature;

@@ -1,6 +1,7 @@
 // MarkovGenerator.js
 import fs from 'fs'
 import path from 'path'
+import { MARKOV_API } from './config.js'
 
 class MarkovGenerator {
   #persona
