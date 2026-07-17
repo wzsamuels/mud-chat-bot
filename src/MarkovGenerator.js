@@ -50,7 +50,7 @@ class MarkovGenerator {
         body: JSON.stringify(payload)
       });
       const data = await response.json();
-      return [data];
+      return [data.response.trim().replace(/(\r\n|\n|\r)/gm, " ")];
     } catch (error) {
       console.error('Error generating reply:', error);
       return [`[ERROR]: Failed to generate reply.`];
