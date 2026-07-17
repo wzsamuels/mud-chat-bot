@@ -30,7 +30,7 @@ class SLMGenerator {
   }
 
   async generateReply(userMessage) {
-    const apiUrl = "http://127.0.0.1:8000/generate"; 
+    const apiUrl = SLM_API; 
 
     // This payload explicitly matches your Python FastAPI ChatRequest Pydantic model
     const payload = {

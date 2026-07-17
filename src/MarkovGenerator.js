@@ -35,7 +35,7 @@ class MarkovGenerator {
 
   async generateReply(userPrompt, maxTokens = 30) {
     // Quick check to ensure the database is populated
-    const apiUrl = "http://127.01.1:3001/generate";
+    const apiUrl = MARKOV_API; // Use the environment variable for the API URL
     const payload = {
       prompt: userPrompt,
       persona: this.#persona   
