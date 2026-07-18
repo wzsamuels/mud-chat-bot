@@ -9,8 +9,6 @@ module.exports = {
       MARKOV_API: 'http://127.0.0.1:3001/generate',
       SLM_API: "http://127.0.0.1:8000/generate"
     },
-    error_file: 'logs/pm2-error.log',
-    out_file: 'logs/pm2-out.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
     merge_logs: true
   }]
